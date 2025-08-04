@@ -1,0 +1,136 @@
+﻿@page "/"
+@using TechDataInput.Client.Services
+@using TechDataInput.Client.Classes
+@using TechDataInput.Data
+@using TechDataInput.Data.DataClasses
+
+@inject MeasurementSessionForm Session
+@inject HttpClient Http
+@inject Blazored.LocalStorage.ILocalStorageService LocalStorage
+@inject NavigationManager Nav
+
+
+<PageTitle>Внесение данных работы оборудования</PageTitle>
+
+<h1>Внесение данных работы оборудования</h1>
+
+<div>
+    <p>Тип пользователя:</p>
+    <select @bind="SelectedRoleId">
+        @foreach (var role in Roles)
+        {
+            <option value="@role.Id" selected="@(SelectedRoleId == role.Id)">
+                @role.Name
+            </option>
+        }
+    </select>
+</div>
+<div>
+    <p>Тип оборудования:</p>
+    <select @bind="SelectedEquipmentGroupId">
+        @foreach (var eqGr in EquipmentGroups)
+        {
+            <option value="@eqGr.Id" selected="@(SelectedEquipmentGroupId == eqGr.Id)">
+                @eqGr.Name
+            </option>
+        }
+    </select>
+</div>
+<div>
+    <p>Оборудование:</p>
+    <select @bind="SelectedEquipmentId">
+        @foreach (var eq in FilteredEquipments)
+        {
+            <option value="@eq.Id" selected="@(SelectedEquipmentId == eq.Id)">
+                @eq.Name
+            </option>
+        }
+    </select>
+</div>
+<div>
+    <button @onclick="GoToMeasureFillPage">Выбрать</button>
+</div>
+@if (!_loaded)
+{
+    <div class="overlay">
+        <div class="spinner">Загрузка...</div>
+    </div>
+}
+@if (ValidationMessage != null)
+{
+    <p style="color: red">@ValidationMessage</p>
+}
+@code {
+
+    List<UserRole> Roles = new();
+    List<EquipmentGroup> EquipmentGroups = new();
+    List<Equipment> Equipments = new();
+
+    int? SelectedRoleId;
+    int? _selectedEquipmentGroupId;
+    int? SelectedEquipmentGroupId
+    {
+        get => _selectedEquipmentGroupId;
+        set
+        {
+            if (_selectedEquipmentGroupId != value)
+            {
+                _selectedEquipmentGroupId = value;
+                SelectedEquipmentId = null; // сброс выбора
+                FilteredEquipments = Equipments
+                    .Where(eq => eq.EquipmentGroupId == value)
+                    .ToList();
+
+                // Если ты хочешь, чтобы UI сразу обновился — можно вызвать:
+                StateHasChanged();
+            }
+        }
+    }
+    int? SelectedEquipmentId;
+
+    string? ValidationMessage = null;
+    List<Equipment> FilteredEquipments = new();
+
+
+    bool _loaded = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_loaded)
+        {
+            _loaded = true;
+
+            try
+            {
+                Roles = await Http.GetFromJsonAsync<List<UserRole>>("api/userroles") ?? new();
+                EquipmentGroups = await Http.GetFromJsonAsync<List<EquipmentGroup>>("api/equipmentgroup") ?? new();
+                Equipments = await Http.GetFromJsonAsync<List<Equipment>>("api/equipment") ?? new();
+
+                SelectedRoleId = await LocalStorage.GetItemAsync<int?>(LocalStorageNames.SelectedRole) ?? Roles.FirstOrDefault()?.Id;
+                SelectedEquipmentGroupId = await LocalStorage.GetItemAsync<int?>(LocalStorageNames.SelectedEquipmentGroup) ?? EquipmentGroups.FirstOrDefault()?.Id;
+                SelectedEquipmentId = await LocalStorage.GetItemAsync<int?>(LocalStorageNames.SelectedEquipment) ?? Equipments.FirstOrDefault()?.Id;
+            }
+            catch (Exception ex)
+            {
+                await Http.PostAsJsonAsync("api/log", new ClientLogEntry("Init", ex));
+            }
+
+            StateHasChanged();
+        }
+    }
+
+    async Task GoToMeasureFillPage()
+    {
+        if (SelectedRoleId != null && SelectedEquipmentId != null && SelectedEquipmentGroupId != null)
+        {
+            await LocalStorage.SetItemAsync(LocalStorageNames.SelectedRole, SelectedRoleId.Value);
+            await LocalStorage.SetItemAsync(LocalStorageNames.SelectedEquipmentGroup, SelectedEquipmentGroupId.Value);
+            await LocalStorage.SetItemAsync(LocalStorageNames.SelectedEquipment, SelectedEquipmentId.Value);
+            Nav.NavigateTo("/MeasureFillPage");
+        }
+        else
+        {
+            ValidationMessage = "Пожалуйста, выберите роль, группу оборудования и оборудование.";
+        }
+    }
+}

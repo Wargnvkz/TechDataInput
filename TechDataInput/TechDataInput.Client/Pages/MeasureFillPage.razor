@@ -1,0 +1,137 @@
+﻿@page "/MeasureFillPage"
+@using TechDataInput.Client.Services
+@using TechDataInput.Client.Classes
+@using TechDataInput.Data
+@using TechDataInput.Data.DataClasses
+@inject Blazored.LocalStorage.ILocalStorageService LocalStorage
+@inject HttpClient Http
+@inject MeasurementSessionForm Session
+@inject NavigationManager Nav
+
+
+<h3>Ввод данных</h3>
+<div>
+    <label>Пользователь:</label>
+    <input @bind="CurrentUser" />
+</div>
+<div>
+    <p>Тип пользователя: @CurrentRole</p>
+</div>
+<div>
+    <p>Группа оборудования: @CurrentEquipmentGroup</p>
+</div>
+<div>
+    <p>Оборудования: @CurrentEqupment</p>
+</div>
+<div>
+    <p>Страница @CurrentPage / @MaxPages"</p>
+</div>
+
+
+@foreach (var param in AllParameters.Where(p => p.PageNumber == CurrentPage))
+{
+    <div>
+        <label>@param.Name (@param.Unit)</label>
+        <input value="@GetValue(param.Id)" @oninput="e => SetValue(param.Id, e.Value.ToString())" />
+    </div>
+}
+
+@if (CurrentPage > 0)
+{
+    <button @onclick="GoBack">Назад</button>
+}
+
+@if (HasNextPage())
+{
+    <button @onclick="GoNext">Далее</button>
+}
+else
+{
+    <button @onclick="SaveSession">Сохранить</button>
+}
+
+@code {
+
+    List<UserRole> Roles = new();
+    List<EquipmentGroup> EquipmentGroups = new();
+    List<Equipment> Equipments = new();
+    int? SelectedRoleId;
+    int? SelectedEquipmentGroupId;
+    int? SelectedEquipmentId;
+    string? CurrentUser;
+    string? CurrentRole;
+    string? CurrentEquipmentGroup;
+    string? CurrentEqupment;
+    int MaxPages = 0;
+
+
+    private List<ParameterDefinition> AllParameters = new();
+    private int CurrentPage = 0;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                Roles = await Http.GetFromJsonAsync<List<UserRole>>("api/userroles") ?? new();
+                EquipmentGroups = await Http.GetFromJsonAsync<List<EquipmentGroup>>("api/equipmentgroup") ?? new();
+                Equipments = await Http.GetFromJsonAsync<List<Equipment>>("api/equipment") ?? new();
+
+                SelectedRoleId = await LocalStorage.GetItemAsync<int?>(LocalStorageNames.SelectedRole) ?? Roles.FirstOrDefault()?.Id;
+                SelectedEquipmentGroupId = await LocalStorage.GetItemAsync<int?>(LocalStorageNames.SelectedEquipmentGroup) ?? EquipmentGroups.FirstOrDefault()?.Id;
+                SelectedEquipmentId = await LocalStorage.GetItemAsync<int?>(LocalStorageNames.SelectedEquipment) ?? Equipments.FirstOrDefault()?.Id;
+
+                AllParameters = await Http.GetFromJsonAsync<List<ParameterDefinition>>(
+                    $"api/parameterdefinitions?roleId={SelectedRoleId}&equipmentId={SelectedEquipmentId}");
+            }
+            catch (Exception ex)
+            {
+                Http.PostAsJsonAsync("api/log", new ClientLogEntry("MeasureFillPage/OnInitializedAsync", ex));
+            }
+            CurrentPage = 0;
+            MaxPages = (AllParameters != null && AllParameters.Count > 0) ? AllParameters.Max(p => p.PageNumber) : 0;
+            if (SelectedRoleId != null) CurrentRole = Roles.Find(r => r.Id == SelectedRoleId.Value)?.Name ?? "";
+            if (SelectedEquipmentGroupId != null) CurrentEquipmentGroup = EquipmentGroups.Find(eg => eg.Id == SelectedEquipmentGroupId.Value)?.Name ?? "";
+            if (SelectedEquipmentId != null) CurrentEqupment = Equipments.Find(e => e.Id == SelectedEquipmentId.Value)?.Name ?? "";
+            CurrentUser = CurrentRole;
+            StateHasChanged();
+        }
+    }
+    private string GetValue(int paramId)
+    {
+        return Session.Values.FirstOrDefault(v => v.ParameterDefinitionId == paramId)?.Value ?? "";
+    }
+
+    private void SetValue(int paramId, string newValue)
+    {
+        var existing = Session.Values.FirstOrDefault(v => v.ParameterDefinitionId == paramId);
+        if (existing != null)
+            existing.Value = newValue;
+        else
+            Session.Values.Add(new ParameterInput() { ParameterDefinitionId = paramId, Value = newValue });
+    }
+
+    private void GoBack() => CurrentPage--;
+    private void GoNext() => CurrentPage++;
+
+    private bool HasNextPage()
+    {
+        return AllParameters.Any(p => p.PageNumber > CurrentPage);
+    }
+
+    private async Task SaveSession()
+    {
+        if (CurrentUser != null && SelectedEquipmentId != null && SelectedRoleId != null)
+        {
+            Session.EnteredBy = CurrentUser ?? "?";
+            Session.EquipmentId = SelectedEquipmentId.Value;
+            Session.UserRoleId = SelectedRoleId.Value;
+
+            // отправить Session.Values на сервер
+            await Http.PostAsJsonAsync("api/input", Session);
+            //Nav.NavigateTo("/thankyou");
+        }
+    }
+
+}
