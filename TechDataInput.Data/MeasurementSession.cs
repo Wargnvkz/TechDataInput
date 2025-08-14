@@ -11,7 +11,7 @@
         public int UserRoleId { get; set; }
         public string EnteredBy { get; set; }
 
-        public ICollection<ParameterValue> Values { get; set; }
+        public ICollection<ParameterValue>? Values { get; set; }
     }
 
 }

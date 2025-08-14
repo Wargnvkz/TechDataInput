@@ -6,7 +6,7 @@
         public string Name { get; set; }
 
         public int EquipmentGroupId { get; set; }
-        public EquipmentGroup EquipmentGroup { get; set; }
+        public EquipmentGroup? EquipmentGroup { get; set; }
     }
 
 }

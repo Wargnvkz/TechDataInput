@@ -1,0 +1,195 @@
+﻿@using TechDataInput.Data
+@inject HttpClient Http
+
+<div class="block">
+    <table class="list">
+        <thead>
+            <tr>
+                <td colspan="4">Оборудование:</td>
+            </tr>
+            <tr>
+                <td>ID</td>
+                <td>Название группы оборудования</td>
+                <td>Название оборудования</td>
+                <td>Действия</td>
+            </tr>
+        </thead>
+        @foreach (var eq in Equipments)
+        {
+            <tr>
+                <td>@(eq.Id)</td>
+
+                @if (EditingEquipmentId == eq.Id)
+                {
+                    <td>
+                        <select @bind="SelectedEquipmentGroupId">
+                            <option value="">-- выберите группу --</option>
+                            @foreach (var eqGr in EquipmentGroups)
+                            {
+                                <option value="@eqGr.Id">
+                                    @eqGr.Name
+                                </option>
+                            }
+                        </select>
+                    </td>
+                    <td>
+                        <input @bind="EditingEquipmentName" />
+                    </td>
+                    <td>
+                        <button @onclick="() => SaveEquipment(eq.Id)">💾</button>
+                        <button @onclick="CancelEquipmentEdit">❌</button>
+                    </td>
+                }
+                else
+                {
+                    <td>@(dictEquipmentGroups.ContainsKey(eq.EquipmentGroupId) ? dictEquipmentGroups[eq.EquipmentGroupId].Name : "")</td>
+                    <td>@(eq.Name)</td>
+                    <td>
+                        <button @onclick="() => StartEquipmentEdit(eq)">✏️</button>
+                        <button @onclick="() => DeleteEquipment(eq)">🗑</button>
+                    </td>
+                }
+            </tr>
+        }
+    </table>
+    <p>
+        Новое оборудование:<br />
+
+        <input @bind="NewEquipmentName" />
+        в группе
+        <select @bind="SelectedNewEquipmentGroupId">
+            <option value="">-- выберите группу --</option>
+            @foreach (var eqGr in EquipmentGroups)
+            {
+                <option value="@eqGr.Id">
+                    @eqGr.Name
+                </option>
+            }
+        </select>
+        <br />
+        <button @onclick="AddNewEquipment">Добавить оборудование</button>
+    </p>
+    @if (EquipmentValidationMessage != null)
+    {
+        <p style="color: red">@EquipmentValidationMessage</p>
+    }
+</div>
+
+@code {
+    [Parameter] public List<EquipmentGroup> EquipmentGroups { get; set; }
+    [Parameter] public List<Equipment> Equipments { get; set; }
+    [Parameter] public Func<Task> UpdateEquipments { get; set; }
+    Dictionary<int, EquipmentGroup> dictEquipmentGroups = new();
+
+
+    #region Equipment variables
+    private int? EditingEquipmentId = null;
+    int? SelectedNewEquipmentGroupId;
+    string NewEquipmentName;
+    string? EquipmentValidationMessage = null;
+    private string EditingEquipmentName;
+    #endregion
+
+    #region Equipment group variables
+    int? SelectedEquipmentGroupId = null;
+    #endregion
+
+    protected override void OnParametersSet()
+    {
+        if (EquipmentGroups != null)
+            dictEquipmentGroups = EquipmentGroups.ToDictionary(eg => eg.Id);
+
+    }
+
+    #region Equipment
+    private void ResetEquipmentValidateMessages()
+    {
+        EquipmentValidationMessage = null;
+    }
+    private void StartEquipmentEdit(Equipment eq)
+    {
+        EditingEquipmentId = eq.Id;
+        SelectedEquipmentGroupId = eq.EquipmentGroupId;
+        EditingEquipmentName = eq.Name;
+    }
+
+    private void CancelEquipmentEdit()
+    {
+        EditingEquipmentId = null;
+        SelectedEquipmentGroupId = null;
+        EditingEquipmentName = null;
+    }
+
+    private async Task SaveEquipment(int id)
+    {
+        ResetEquipmentValidateMessages();
+        if (string.IsNullOrWhiteSpace(EditingEquipmentName))
+        {
+            EquipmentValidationMessage = "Название единицы оборудования не может быть пустым";
+            return;
+        }
+        if (SelectedEquipmentGroupId == null)
+        {
+            EquipmentValidationMessage = "Выберите группу оборудования";
+            return;
+
+        }
+
+        var response = await Http.PutAsJsonAsync($"api/equipment/{id}", new Equipment { Id = id, EquipmentGroupId = SelectedEquipmentGroupId.Value, Name = EditingEquipmentName });
+
+        if (response.IsSuccessStatusCode)
+        {
+            if (UpdateEquipments != null) await UpdateEquipments();
+            CancelEquipmentEdit();
+            EquipmentValidationMessage = null;
+        }
+        else
+        {
+            EquipmentValidationMessage = "Ошибка при сохранении единицы оборудования";
+        }
+    }
+
+    public async Task DeleteEquipment(Equipment eq)
+    {
+        ResetEquipmentValidateMessages();
+        var response = await Http.DeleteAsync($"api/equipment/{eq.Id}");
+        if (response.IsSuccessStatusCode)
+        {
+            if (UpdateEquipments != null) await UpdateEquipments();
+        }
+        else
+        {
+            EquipmentValidationMessage = "Не удалось удалить единицу оборудования";
+        }
+    }
+    public async Task AddNewEquipment()
+    {
+        ResetEquipmentValidateMessages();
+        if (SelectedNewEquipmentGroupId == null)
+        {
+            EquipmentValidationMessage = "Выберите группу оборудования";
+            return;
+
+        }
+        if (NewEquipmentName != null)
+        {
+            var response = await Http.PostAsJsonAsync<Equipment>("api/equipment", new Equipment() { Name = NewEquipmentName, EquipmentGroupId = SelectedNewEquipmentGroupId.Value });
+            if (!response.IsSuccessStatusCode)
+            {
+                EquipmentValidationMessage = "Не удалось сохранить новую единицу оборудования";
+            }
+            else
+            {
+                EquipmentValidationMessage = null;
+                if (UpdateEquipments != null) await UpdateEquipments();
+
+            }
+        }
+        else
+        {
+            EquipmentValidationMessage = "Введите название единицы оборудования";
+        }
+    }
+    #endregion
+
+}

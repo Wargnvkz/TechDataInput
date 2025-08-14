@@ -5,7 +5,7 @@
         public int Id { get; set; }
         public string Name { get; set; } // "Оператор", "Технолог", "Инженер"
 
-        public ICollection<ParameterDefinition> ParameterDefinitions { get; set; }
+        public ICollection<ParameterDefinition>? ParameterDefinitions { get; set; }
     }
 
 }

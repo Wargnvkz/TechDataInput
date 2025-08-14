@@ -13,6 +13,20 @@ namespace TechDataInput.DB
         public DbSet<ParameterDefinition> ParameterDefinitions { get; set; }
         public DbSet<MeasurementSession> MeasurementSessions { get; set; }
         public DbSet<ParameterValue> ParameterValues { get; set; }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            
+            base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<ParameterValue>()
+                .HasOne(pv => pv.ParameterDefinition)
+                .WithMany(pd => pd.Values)
+                .HasForeignKey(pv => pv.ParameterDefinitionId)
+                .OnDelete(DeleteBehavior.Restrict); // или NoAction
+            
+        }
+
     }
 
 }

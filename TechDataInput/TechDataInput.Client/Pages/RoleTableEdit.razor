@@ -1,0 +1,142 @@
+﻿@using TechDataInput.Data
+@inject HttpClient Http
+
+<div class="block">
+    <table class="list">
+        <thead>
+            <tr>
+                <td colspan="2">Роли пользователей</td>
+                <td>Действия</td>
+            </tr>
+        </thead>
+        @foreach (var role in Roles)
+        {
+            <tr>
+                <td>@(role.Id)</td>
+                @if (EditingRoleId == role.Id)
+                {
+                    <td>
+                        <input @bind="EditingRoleName" />
+                    </td>
+                    <td>
+                        <button @onclick="() => SaveRole(role.Id)">💾</button>
+                        <button @onclick="CancelRoleEdit">❌</button>
+                    </td>
+                }
+                else
+                {
+                    <td>@role.Name</td>
+                    <td>
+                        <button @onclick="() => StartRoleEdit(role)">✏️</button>
+                        <button @onclick="() => DeleteRole(role)">🗑</button>
+                    </td>
+                }
+            </tr>
+        }
+    </table>
+    <p>
+        Новая роль:<br />
+
+        <input @bind="NewRoleName" />
+        <br />
+        <button @onclick="AddNewRole">Добавить роль</button>
+    </p>
+    @if (RoleValidationMessage != null)
+    {
+        <p style="color: red">@RoleValidationMessage</p>
+    }
+</div>
+@code {
+    [Parameter] public List<UserRole> Roles { get; set; }
+    [Parameter] public Func<Task> UpdateRoles { get; set; }
+
+    #region Role variables
+    private int? EditingRoleId = null;
+    private string EditingRoleName;
+    string NewRoleName;
+    string? RoleValidationMessage = null;
+    #endregion
+
+    #region Role methods
+    private void ResetRoleValidateMessages()
+    {
+        RoleValidationMessage = null;
+    }
+    private void StartRoleEdit(UserRole role)
+    {
+        EditingRoleId = role.Id;
+        EditingRoleName = role.Name;
+    }
+
+    private void CancelRoleEdit()
+    {
+        EditingRoleId = null;
+        EditingRoleName = null;
+    }
+
+    private async Task SaveRole(int id)
+    {
+        ResetRoleValidateMessages();
+        if (string.IsNullOrWhiteSpace(EditingRoleName))
+        {
+            RoleValidationMessage = "Название роли не может быть пустым";
+            return;
+        }
+
+        var response = await Http.PutAsJsonAsync($"api/userroles/{id}", new UserRole { Id = id, Name = EditingRoleName });
+
+        if (response.IsSuccessStatusCode)
+        {
+            if (UpdateRoles != null) await UpdateRoles();
+            CancelRoleEdit();
+            RoleValidationMessage = null;
+        }
+        else
+        {
+            RoleValidationMessage = "Ошибка при сохранении роли";
+        }
+    }
+
+    public async Task AddNewRole()
+    {
+        ResetRoleValidateMessages();
+        if (!string.IsNullOrWhiteSpace(NewRoleName))
+        {
+            var newRole = new UserRole() { Name = NewRoleName };
+            var response = await Http.PostAsJsonAsync("api/userroles", newRole);
+            if (response.IsSuccessStatusCode)
+            {
+                if (UpdateRoles != null) await UpdateRoles();
+                /*// Можно перечитать список
+                Roles = await Http.GetFromJsonAsync<List<UserRole>>("api/userroles");*/
+                NewRoleName = "";
+            }
+            else
+            {
+                RoleValidationMessage = "Не удалось сохранить новую роль";
+            }
+        }
+        else
+        {
+            RoleValidationMessage = "Введите название роли";
+        }
+    }
+    public async Task DeleteRole(UserRole role)
+    {
+        ResetRoleValidateMessages();
+        var response = await Http.DeleteAsync($"api/userroles/{role.Id}");
+        if (response.IsSuccessStatusCode)
+        {
+            if (UpdateRoles != null) await UpdateRoles();
+
+            /*// Можно перечитать список
+            Roles = await Http.GetFromJsonAsync<List<UserRole>>("api/userroles");*/
+        }
+        else
+        {
+            RoleValidationMessage = "Не удалось удалить роль";
+        }
+    }
+    #endregion
+
+}

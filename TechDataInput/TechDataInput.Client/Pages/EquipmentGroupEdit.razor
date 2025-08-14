@@ -1,0 +1,140 @@
+﻿@using TechDataInput.Data
+@inject HttpClient Http
+
+<div class="block">
+    <table class="list">
+        <thead>
+            <tr>
+                <td colspan="2">Группы оборудования</td>
+                <td>Действия</td>
+
+            </tr>
+        </thead>
+        @foreach (var eq in EquipmentGroups)
+        {
+            <tr>
+                <td>@(eq.Id)</td>
+                @if (EditingEquipmentGroupId == eq.Id)
+                {
+                    <td>
+                        <input @bind="EditingEquipmentGroupName" />
+                    </td>
+                    <td>
+                        <button @onclick="() => SaveEquipmentGroup(eq.Id)">💾</button>
+                        <button @onclick="CancelEquipmentGroupEdit">❌</button>
+                    </td>
+                }
+                else
+                {
+                    <td>@eq.Name</td>
+                    <td>
+                        <button @onclick="() => StartEquipmentGroupEdit(eq)">✏️</button>
+                        <button @onclick="() => DeleteEquipmentGroup(eq)">🗑</button>
+                    </td>
+                }
+            </tr>
+        }
+    </table>
+    <p>
+        Новая группа оборудования:<br />
+
+        <input @bind="NewEquipmentGroupName" />
+        <br />
+        <button @onclick="AddNewEquipmentGroup">Добавить группу оборудования</button>
+    </p>
+    @if (EquipmentGroupValidationMessage != null)
+    {
+        <p style="color: red">@EquipmentGroupValidationMessage</p>
+    }
+</div>
+
+@code {
+    [Parameter] public List<EquipmentGroup> EquipmentGroups { get; set; }
+    [Parameter] public Func<Task> UpdateEquipmentGroups { get; set; }
+
+
+    #region Equipment group variables
+    private int? EditingEquipmentGroupId = null;
+    private string EditingEquipmentGroupName;
+    string NewEquipmentGroupName;
+    string? EquipmentGroupValidationMessage = null;
+    #endregion
+
+    #region Equipment Group
+    private void ResetEquipmentGroupValidateMessages()
+    {
+        EquipmentGroupValidationMessage = null;
+    }
+    private void StartEquipmentGroupEdit(EquipmentGroup eqGroup)
+    {
+        EditingEquipmentGroupId = eqGroup.Id;
+        EditingEquipmentGroupName = eqGroup.Name;
+    }
+
+    private void CancelEquipmentGroupEdit()
+    {
+        EditingEquipmentGroupId = null;
+        EditingEquipmentGroupName = null;
+    }
+
+    private async Task SaveEquipmentGroup(int id)
+    {
+        ResetEquipmentGroupValidateMessages();
+        if (string.IsNullOrWhiteSpace(EditingEquipmentGroupName))
+        {
+            EquipmentGroupValidationMessage = "Название роли не может быть пустым";
+            return;
+        }
+
+        var response = await Http.PutAsJsonAsync($"api/equipmentgroup/{id}", new EquipmentGroup { Id = id, Name = EditingEquipmentGroupName });
+
+        if (response.IsSuccessStatusCode)
+        {
+            if (UpdateEquipmentGroups != null) await UpdateEquipmentGroups();
+            CancelEquipmentGroupEdit();
+            EquipmentGroupValidationMessage = null;
+        }
+        else
+        {
+            EquipmentGroupValidationMessage = "Ошибка при сохранении роли";
+        }
+    }
+
+    public async Task DeleteEquipmentGroup(EquipmentGroup eqGroup)
+    {
+        ResetEquipmentGroupValidateMessages();
+        var response = await Http.DeleteAsync($"api/equipmentgroup/{eqGroup.Id}");
+        if (response.IsSuccessStatusCode)
+        {
+            if (UpdateEquipmentGroups != null) await UpdateEquipmentGroups();
+        }
+        else
+        {
+            EquipmentGroupValidationMessage = "Не удалось удалить роль";
+        }
+    }
+    public async Task AddNewEquipmentGroup()
+    {
+        ResetEquipmentGroupValidateMessages();
+        if (NewEquipmentGroupName != null)
+        {
+            var response = await Http.PostAsJsonAsync<EquipmentGroup>("api/equipmentgroup", new EquipmentGroup() { Name = NewEquipmentGroupName });
+            if (!response.IsSuccessStatusCode)
+            {
+                EquipmentGroupValidationMessage = "Не удалось сохранить новую группу обдорудования";
+            }
+            else
+            {
+                EquipmentGroupValidationMessage = null;
+                if (UpdateEquipmentGroups != null) await UpdateEquipmentGroups();
+
+            }
+        }
+        else
+        {
+            EquipmentGroupValidationMessage = "Введите название группы оборудования";
+        }
+    }
+    #endregion
+
+}

@@ -91,6 +91,11 @@ namespace TechDataInput
                 }
             });
 
+            using (var scope = app.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                db.Database.EnsureCreated(); // Создаёт базу и схему, если их нет
+            }
 
             app.Run();
         }

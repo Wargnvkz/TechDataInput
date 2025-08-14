@@ -1,5 +1,142 @@
-﻿<h3>Settings</h3>
+﻿@page "/Settings"
+@using TechDataInput.Data
+@using TechDataInput.Data.DataClasses
+@inject HttpClient Http
+
+<h3>Settings</h3>
+
+<ol>
+    <li>
+        <RoleTableEdit Roles="Roles" UpdateRoles="GetRoles" />
+    </li>
+    <li>
+        <EquipmentGroupEdit EquipmentGroups="EquipmentGroups" UpdateEquipmentGroups="GetEquipmentGroups" />
+    </li>
+    <hr />
+    <li>
+        <EquipmentEdit EquipmentGroups="EquipmentGroups" Equipments="Equipments" UpdateEquipments="GetEquipments" />
+    </li>
+    <li>
+        <ParameterDefinitionEdit Roles="Roles" EquipmentGroups="EquipmentGroups" ParameterDefinitions="ParameterDefinitions" UpdateParameterDefinitions="GetParameterDefinitions" />
+    </li>
+</ol>
 
 @code {
+    List<UserRole> Roles = new();
+    List<EquipmentGroup> EquipmentGroups = new();
+    List<Equipment> Equipments = new();
+    List<ParameterDefinition> ParameterDefinitions = new();
+
+
+
+
+    int? SelectedRoleIdForParameters;
+
+    int? _selectedEquipmentGroupIdForParameters;
+    int? SelectedEquipmentGroupIdForParameters
+    {
+        get => _selectedEquipmentGroupIdForParameters;
+        set
+        {
+            if (_selectedEquipmentGroupIdForParameters != value)
+            {
+                _selectedEquipmentGroupIdForParameters = value;
+
+
+                // Если ты хочешь, чтобы UI сразу обновился — можно вызвать:
+                StateHasChanged();
+            }
+        }
+    }
+
+    private void FilterLists(int? SelectedRoleId, int? SelectedEquipmentGroupId)
+    {
+        FilteredEquipments = Equipments
+            .Where(eq => eq.EquipmentGroupId == SelectedEquipmentGroupId)
+            .ToList();
+        FilteredParameterDefinitions = ParameterDefinitions.Where(pd => pd.UserRoleId == SelectedRoleIdForParameters && pd.EquipmentGroupId == SelectedEquipmentGroupIdForParameters).ToList();
+    }
+
+    List<Equipment> FilteredEquipments = new();
+    List<ParameterDefinition> FilteredParameterDefinitions = new();
+
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadData();
+            StateHasChanged();
+        }
+    }
+    protected async Task LoadData()
+    {
+        try
+        {
+            Roles = await Http.GetFromJsonAsync<List<UserRole>>("api/userroles") ?? new();
+            EquipmentGroups = await Http.GetFromJsonAsync<List<EquipmentGroup>>("api/equipmentgroup") ?? new();
+            Equipments = await Http.GetFromJsonAsync<List<Equipment>>("api/equipment") ?? new();
+            ParameterDefinitions = await Http.GetFromJsonAsync<List<ParameterDefinition>>("api/parameterdefinitions") ?? new();
+
+        }
+        catch (Exception ex)
+        {
+            await Http.PostAsJsonAsync("api/log", new ClientLogEntry("Settings", ex));
+        }
+
+    }
+    protected async Task GetRoles()
+    {
+        try
+        {
+            Roles = await Http.GetFromJsonAsync<List<UserRole>>("api/userroles") ?? new();
+
+        }
+        catch (Exception ex)
+        {
+            await Http.PostAsJsonAsync("api/log", new ClientLogEntry("Settings", ex));
+        }
+        StateHasChanged();
+
+    }
+    protected async Task GetEquipmentGroups()
+    {
+        try
+        {
+            EquipmentGroups = await Http.GetFromJsonAsync<List<EquipmentGroup>>("api/equipmentgroup") ?? new();
+        }
+        catch (Exception ex)
+        {
+            await Http.PostAsJsonAsync("api/log", new ClientLogEntry("Settings", ex));
+        }
+        StateHasChanged();
+
+    }
+    protected async Task GetEquipments()
+    {
+        try
+        {
+            Equipments = await Http.GetFromJsonAsync<List<Equipment>>("api/equipment") ?? new();
+        }
+        catch (Exception ex)
+        {
+            await Http.PostAsJsonAsync("api/log", new ClientLogEntry("Settings", ex));
+        }
+        StateHasChanged();
+
+    }
+    protected async Task GetParameterDefinitions()
+    {
+        try
+        {
+            ParameterDefinitions = await Http.GetFromJsonAsync<List<ParameterDefinition>>("api/parameterdefinitions") ?? new();
+        }
+        catch (Exception ex)
+        {
+            await Http.PostAsJsonAsync("api/log", new ClientLogEntry("Settings", ex));
+        }
+        StateHasChanged();
+
+    }
 
 }

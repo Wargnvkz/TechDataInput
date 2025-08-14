@@ -7,6 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Include="..\TechDataInput.Client\Pages\EditableTable.razor" Link="EditableTable.razor" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\TechDataInput.Data\TechDataInput.Data.csproj" />
     <ProjectReference Include="..\TechDataInput.Client\TechDataInput.Client.csproj" />
     <PackageReference Include="Blazored.LocalStorage" Version="4.5.0" />

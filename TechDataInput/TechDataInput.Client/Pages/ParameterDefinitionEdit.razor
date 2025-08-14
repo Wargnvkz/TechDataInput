@@ -1,0 +1,264 @@
+﻿@using TechDataInput.Data
+@inject HttpClient Http
+
+<div class="block">
+    <p>Тип пользователя:</p>
+    <select @bind="SelectedRoleId">
+        <option value="">-- выберите роль --</option>
+        @foreach (var role in Roles)
+        {
+            <option value="@role.Id">
+                @role.Name
+            </option>
+        }
+    </select>
+
+    <p>Тип оборудования:</p>
+    <select @bind="SelectedEquipmentGroupId">
+        <option value="">-- выберите группу --</option>
+        @foreach (var eqGr in EquipmentGroups)
+        {
+            <option value="@eqGr.Id">
+                @eqGr.Name
+            </option>
+        }
+    </select>
+
+    <table class="list">
+        <thead>
+            <tr>
+                <td colspan="7">Параметры оборудования:</td>
+            </tr>
+            <tr>
+                <td>ID</td>
+                <td>Название роли</td>
+                <td>Название типа оборудования</td>
+                <td>Название параметра</td>
+                <td>Единица измерения</td>
+                <td>Номер страницы</td>
+                <td>Порядковый номер на странице</td>
+                <td>Действия</td>
+            </tr>
+        </thead>
+        @foreach (var parameter in FilteredParameterDefinitions)
+        {
+            <tr>
+                <td>@(parameter.Id)</td>
+                @if (EditingRecord != null && EditingRecord.Id == parameter.Id)
+                {
+                    <td>
+                        <select @bind="EditingRecord.UserRoleId">
+                            <option value="">-- выберите группу --</option>
+                            @foreach (var role in Roles)
+                            {
+                                <option value="@role.Id">
+                                    @role.Name
+                                </option>
+                            }
+                        </select>
+                    </td>
+                    <td>
+                        <select @bind="EditingRecord.EquipmentGroupId">
+                            <option value="">-- выберите группу --</option>
+                            @foreach (var eqGr in EquipmentGroups)
+                            {
+                                <option value="@eqGr.Id">
+                                    @eqGr.Name
+                                </option>
+                            }
+                        </select>
+                    </td>
+                    <td><input @bind="EditingRecord.Name" /></td>
+                    <td><input @bind="EditingRecord.Unit" /> </td>
+                    <td><input type="number" @bind="EditingRecord.PageNumber" /></td>
+                    <td><input type="number" @bind="EditingRecord.OrderOnPage" /> </td>
+                    <td>
+                        <button @onclick="() => SaveParameter(EditingRecord)">💾</button>
+                        <button @onclick="CancelParameterEdit">❌</button>
+                    </td>
+                }
+                else
+                {
+                    <td>@(dictRoles.ContainsKey(parameter.UserRoleId) ? dictRoles[parameter.UserRoleId].Name : "")</td>
+                    <td>@(dictEquipmentGroups.ContainsKey(parameter.EquipmentGroupId) ? dictEquipmentGroups[parameter.EquipmentGroupId].Name : "")</td>
+                    <td>@(parameter.Name)</td>
+                    <td>@(parameter.Unit)</td>
+                    <td>@(parameter.PageNumber)</td>
+                    <td>@(parameter.OrderOnPage)</td>
+                    <td>
+                        <button @onclick="() => StartParameterEdit(parameter)">✏️</button>
+                        <button @onclick="() => DeleteParameter(parameter)">🗑</button>
+                    </td>
+                }
+            </tr>
+        }
+    </table>
+    <p>
+        Имя нового параметра:
+        <input @bind="newRecord.Name" />
+        Измерение нового параметра:
+        <input @bind="newRecord.Unit" />
+        Номер страницы:
+        <input @bind="newRecord.PageNumber" />
+        порядковый номер на странице:
+        <input @bind="newRecord.OrderOnPage" />
+        <br />
+        <button @onclick="AddNewParameter">Добавить новый параметр</button>
+    </p>
+    @if (ParameterDefinitionValidationMessage != null)
+    {
+        <p style="color: red">@ParameterDefinitionValidationMessage</p>
+    }
+</div>
+
+@code {
+    [Parameter] public List<UserRole> Roles { get; set; } = new();
+    [Parameter] public List<EquipmentGroup> EquipmentGroups { get; set; } = new();
+    [Parameter] public List<ParameterDefinition> ParameterDefinitions { get; set; } = new();
+    [Parameter] public Func<Task> UpdateParameterDefinitions { get; set; }
+
+
+    public List<ParameterDefinition> FilteredParameterDefinitions { get; set; } = new();
+    Dictionary<int, EquipmentGroup> dictEquipmentGroups = new();
+    Dictionary<int, UserRole> dictRoles = new();
+
+
+    #region Parameter definition
+    int? _SelectedRoleId;
+    int? _SelectedEquipmentGroupId;
+    public int? SelectedRoleId
+    {
+        get => _SelectedRoleId;
+        set
+        {
+            _SelectedRoleId = value;
+            FilterLists(_SelectedRoleId, _SelectedEquipmentGroupId);
+        }
+    }
+    public int? SelectedEquipmentGroupId
+    {
+        get => _SelectedEquipmentGroupId;
+        set
+        {
+            _SelectedEquipmentGroupId = value;
+            FilterLists(_SelectedRoleId, _SelectedEquipmentGroupId);
+        }
+
+    }
+    ParameterDefinition newRecord = new();
+    ParameterDefinition EditingRecord = null;
+    string? ParameterDefinitionValidationMessage = null;
+
+    #endregion
+
+    protected override void OnParametersSet()
+    {
+        if (Roles != null)
+            dictRoles = Roles.ToDictionary(r => r.Id);
+        if (EquipmentGroups != null)
+            dictEquipmentGroups = EquipmentGroups.ToDictionary(eg => eg.Id);
+        FilterLists(_SelectedRoleId, _SelectedEquipmentGroupId);
+    }
+    private void FilterLists(int? SelectedRoleId, int? SelectedEquipmentGroupId)
+    {
+        if (SelectedRoleId == null || SelectedEquipmentGroupId == null)
+        {
+            FilteredParameterDefinitions = ParameterDefinitions;
+        }
+        else
+        {
+            FilteredParameterDefinitions = ParameterDefinitions.Where(pd => pd.UserRoleId == SelectedRoleId && pd.EquipmentGroupId == SelectedEquipmentGroupId).ToList();
+        }
+    }
+
+    private void ResetParameterValidateMessages()
+    {
+        ParameterDefinitionValidationMessage = null;
+    }
+    private void StartParameterEdit(ParameterDefinition parameter)
+    {
+        EditingRecord = parameter;
+    }
+
+    private void CancelParameterEdit()
+    {
+        EditingRecord = null;
+    }
+
+    private async Task SaveParameter(ParameterDefinition pd)
+    {
+        ResetParameterValidateMessages();
+        if (string.IsNullOrWhiteSpace(pd.Name))
+        {
+            ParameterDefinitionValidationMessage = "Название параметра не может быть пустым";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(pd.Unit))
+        {
+            ParameterDefinitionValidationMessage = "Поле единица измерения не может быть пустым";
+            return;
+        }
+
+        var response = await Http.PutAsJsonAsync($"api/parameterdefinitions/{pd.Id}", pd);
+
+        if (response.IsSuccessStatusCode)
+        {
+            if (UpdateParameterDefinitions != null) await UpdateParameterDefinitions();
+            CancelParameterEdit();
+        }
+        else
+        {
+            ParameterDefinitionValidationMessage = "Ошибка при сохранении параметра";
+        }
+    }
+
+    public async Task DeleteParameter(ParameterDefinition pd)
+    {
+        ResetParameterValidateMessages();
+        var response = await Http.DeleteAsync($"api/parameterdefinitions/{pd.Id}");
+        if (response.IsSuccessStatusCode)
+        {
+            if (UpdateParameterDefinitions != null) await UpdateParameterDefinitions();
+        }
+        else
+        {
+            ParameterDefinitionValidationMessage = "Не удалось удалить параметр";
+        }
+    }
+    public async Task AddNewParameter()
+    {
+        ResetParameterValidateMessages();
+        if (_SelectedEquipmentGroupId == null)
+        {
+            ParameterDefinitionValidationMessage = "Выберите группу оборудования";
+            return;
+        }
+        if (_SelectedRoleId == null)
+        {
+            ParameterDefinitionValidationMessage = "Выберите роль пользователя";
+            return;
+
+        }
+
+        newRecord.EquipmentGroupId = _SelectedEquipmentGroupId.Value;
+        newRecord.UserRoleId = _SelectedRoleId.Value;
+
+        if (string.IsNullOrWhiteSpace(newRecord.Name))
+        {
+            ParameterDefinitionValidationMessage = "Название параметра не может быть пустым";
+            return;
+        }
+
+        var response = await Http.PostAsJsonAsync<ParameterDefinition>("api/parameterdefinitions", newRecord);
+        if (!response.IsSuccessStatusCode)
+        {
+            var rsp = await response.Content.ReadAsStringAsync();
+            ParameterDefinitionValidationMessage = $"Не удалось сохранить новый параметр({rsp})";
+        }
+        else
+        {
+            if (UpdateParameterDefinitions != null) await UpdateParameterDefinitions();
+            newRecord = new();
+        }
+    }
+}

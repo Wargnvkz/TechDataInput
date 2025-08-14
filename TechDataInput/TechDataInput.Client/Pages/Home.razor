@@ -12,7 +12,12 @@
 
 <PageTitle>Внесение данных работы оборудования</PageTitle>
 
-<h1>Внесение данных работы оборудования</h1>
+<div>
+    <h1>
+        Внесение данных работы оборудования
+        <a @onclick="GoToSettingsPage" style="font-size:8pt; letter-spacing:-0.2em; cursor:pointer;"><sup>⛭</sup>⛭</a>
+    </h1>
+</div>
 
 <div>
     <p>Тип пользователя:</p>
@@ -132,5 +137,9 @@
         {
             ValidationMessage = "Пожалуйста, выберите роль, группу оборудования и оборудование.";
         }
+    }
+    void GoToSettingsPage()
+    {
+        Nav.NavigateTo("/Settings");
     }
 }

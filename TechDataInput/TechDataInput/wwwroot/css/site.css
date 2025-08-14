@@ -18,3 +18,13 @@
     border-radius: 5px;
     font-weight: bold;
 }
+
+table.list tr td, table.list tr, table.list {
+    border-collapse: collapse;
+    border: 1px solid;
+}
+
+div.block {
+    margin: 10px 10px 50px 10px;
+    /* border-bottom: 1px solid; */
+}
