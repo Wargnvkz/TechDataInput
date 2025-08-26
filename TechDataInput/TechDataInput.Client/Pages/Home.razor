@@ -20,6 +20,13 @@
 </div>
 
 <div>
+    <p>
+
+        <a @onclick="GoToViewPage">Просмотр внесенных данных</a>
+    </p>
+</div>
+
+<div>
     <p>Тип пользователя:</p>
     <select @bind="SelectedRoleId">
         @foreach (var role in Roles)
@@ -141,5 +148,9 @@
     void GoToSettingsPage()
     {
         Nav.NavigateTo("/Settings");
+    }
+    void GoToViewPage()
+    {
+        Nav.NavigateTo("/View");
     }
 }

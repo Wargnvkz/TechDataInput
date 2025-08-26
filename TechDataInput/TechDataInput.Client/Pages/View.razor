@@ -1,0 +1,175 @@
+﻿@page "/View"
+@using TechDataInput.Data
+@inject HttpClient Http
+<h3>Просмотр</h3>
+
+<div>
+    <p>Тип пользователя:</p>
+    <select @bind="SelectedRoleId">
+        @foreach (var role in Roles)
+        {
+            <option value="@role.Id" selected="@(SelectedRoleId == role.Id)">
+                @role.Name
+            </option>
+        }
+    </select>
+</div>
+<div>
+    <p>Тип оборудования:</p>
+    <select @bind="SelectedEquipmentGroupId">
+        @foreach (var eqGr in EquipmentGroups)
+        {
+            <option value="@eqGr.Id" selected="@(SelectedEquipmentGroupId == eqGr.Id)">
+                @eqGr.Name
+            </option>
+        }
+    </select>
+</div>
+<div>
+    <p>Оборудование:</p>
+    <select @bind="SelectedEquipmentId">
+        @foreach (var eq in FilteredEquipments)
+        {
+            <option value="@eq.Id" selected="@(SelectedEquipmentId == eq.Id)">
+                @eq.Name
+            </option>
+        }
+    </select>
+</div>
+<button @onclick="ShowMeasurement">Показать измерения</button>
+
+<div>
+    <br />
+    Измерения:
+    <br />
+    @if (MeasurementSessions != null && MeasurementSessions.Count > 0 && AllParameterDefinitions!=null)
+    {
+        int headerIndex = MeasurementSessions.Max(ms => ms.Values.Count);
+        <table class="list">
+            <thead>
+                <tr>
+                    <td>
+                        N
+                    </td>
+                    <td>
+                        Время
+                    </td>
+                    @foreach (var kv in AllParameterDefinitions)
+                    {
+                        <td>
+                            @kv.Value
+                        </td>
+                    }
+                </tr>
+            </thead>
+            @{
+                int N = 1;
+            }
+            @foreach (var session in MeasurementSessions)
+            {
+                <tr>
+                    <td>@N                    </td>
+                    <td>
+                        @session.Timestamp.ToString("dd-MM-yyyy HH:mm")
+                    </td>
+
+                    @foreach (var def in AllParameterDefinitions)
+                    {
+                        var value = session.Values.FirstOrDefault(v => v.ParameterDefinitionId == def.Key);
+                        <td>@(value?.Value ?? "")</td>
+                    }
+
+                    <!--@foreach (var value in session.Values)
+                    {
+                        <td>
+                            @value.Value
+                        </td>
+                    }-->
+                </tr>
+                N++;
+            }
+        </table>
+    }
+</div>
+@if (!_loaded)
+{
+    <div class="overlay">
+        <div class="spinner">Загрузка...</div>
+    </div>
+}
+
+@code {
+    int? SelectedRoleId;
+    int? _selectedEquipmentGroupId;
+    int? SelectedEquipmentGroupId
+    {
+        get => _selectedEquipmentGroupId;
+        set
+        {
+            if (_selectedEquipmentGroupId != value)
+            {
+                _selectedEquipmentGroupId = value;
+                SelectedEquipmentId = null; // сброс выбора
+                FilteredEquipments = Equipments
+                    .Where(eq => eq.EquipmentGroupId == value)
+                    .ToList();
+
+                // Если ты хочешь, чтобы UI сразу обновился — можно вызвать:
+                StateHasChanged();
+            }
+        }
+    }
+    int? SelectedEquipmentId;
+
+    string? ValidationMessage = null;
+    List<Equipment> FilteredEquipments = new();
+
+    List<UserRole> Roles = new();
+    List<EquipmentGroup> EquipmentGroups = new();
+    List<Equipment> Equipments = new();
+    private List<MeasurementSessionDto> MeasurementSessions = new();
+    Dictionary<int, string>? AllParameterDefinitions;
+
+    bool _loaded = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_loaded)
+        {
+            _loaded = true;
+            Roles = await Http.GetFromJsonAsync<List<UserRole>>("api/userroles") ?? new();
+            EquipmentGroups = await Http.GetFromJsonAsync<List<EquipmentGroup>>("api/equipmentgroup") ?? new();
+            Equipments = await Http.GetFromJsonAsync<List<Equipment>>("api/equipment") ?? new();
+
+            SelectedRoleId = Roles.FirstOrDefault()?.Id;
+            SelectedEquipmentGroupId = EquipmentGroups.FirstOrDefault()?.Id;
+            SelectedEquipmentId = Equipments.FirstOrDefault()?.Id;
+
+            StateHasChanged();
+        }
+    }
+    private async Task ShowMeasurement()
+    {
+        await LoadData(SelectedRoleId, SelectedEquipmentId);
+    }
+
+    private async Task LoadData(int? roleid, int? equipmentid)
+    {
+        MeasurementSessions = await Http.GetFromJsonAsync<List<MeasurementSessionDto>>($"api/input?roleId={roleid}&equipmentId={equipmentid}") ?? new();
+        MeasurementSessions = MeasurementSessions.OrderBy(ms => ms.Timestamp).ToList();
+        AllParameterDefinitions = new();
+        foreach (var session in MeasurementSessions)
+        {
+            foreach (var value in session.Values)
+            {
+                if (!AllParameterDefinitions.ContainsKey(value.ParameterDefinitionId))
+                {
+                    AllParameterDefinitions.Add(value.ParameterDefinitionId, value.ParameterName + (string.IsNullOrWhiteSpace(value.ParameterAddInfo) ? "" : "(" + value.ParameterAddInfo + ")"));
+                }
+            }
+        }
+
+
+    }
+
+}

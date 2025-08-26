@@ -18,6 +18,47 @@ namespace TechDataInput.Controllers
         {
             db = DB;
         }
+        /*
+                [HttpGet]
+                public async Task<List<MeasurementSession>> GetMeasurements([FromQuery] int roleId, [FromQuery] int equipmentId)
+                {
+                    return await db.MeasurementSessions
+                        .Where(ms => ms.EquipmentId == equipmentId && ms.UserRoleId == roleId)
+                        .Include(ms => ms.Values!)
+                        .ThenInclude(v => v.ParameterDefinition)
+                        .ToListAsync();
+                }*/
+        [HttpGet]
+        public async Task<List<MeasurementSessionDto>> GetMeasurements([FromQuery] int roleId, [FromQuery] int equipmentId)
+        {
+            var sessions = await db.MeasurementSessions
+                .Where(ms => ms.EquipmentId == equipmentId && ms.UserRoleId == roleId)
+                .Include(ms => ms.Values!)
+                    .ThenInclude(v => v.ParameterDefinition)
+                .ToListAsync();
+
+            return sessions.Select(ms => new MeasurementSessionDto
+            {
+                Id = ms.Id,
+                Timestamp = ms.Timestamp,
+                Values = ms.Values!
+                           .OrderBy(v => v.ParameterDefinition!.PageNumber)
+                           .ThenBy(v => v.ParameterDefinition.RowOnPage)
+                           .ThenBy(v => v.ParameterDefinition.ColumnInLine)
+                           .Select(v => new ParameterValueDto
+                           {
+                               Id = v.Id,
+                               Value = v.Value,
+                               ParameterName = v.ParameterDefinition!.Name,
+                               PageNumber = v.ParameterDefinition.PageNumber,
+                               RowOnPage = v.ParameterDefinition.RowOnPage,
+                               ColumnInLine = v.ParameterDefinition.ColumnInLine,
+                               ParameterAddInfo = v.ParameterDefinition.AddInfo,
+                               ParameterDefinitionId = v.ParameterDefinitionId
+                           }).ToList()
+            }).ToList();
+        }
+
 
         [HttpPost]
         public async Task<IActionResult> SubmitMeasurement([FromBody] MeasurementSessionForm form)
@@ -28,11 +69,11 @@ namespace TechDataInput.Controllers
                 UserRoleId = form.UserRoleId,
                 EnteredBy = form.EnteredBy,
                 Timestamp = DateTime.Now,
-                Values = form.Values.Select(v => new ParameterValue
+                Values = form.Values?.Select(v => new ParameterValue
                 {
                     ParameterDefinitionId = v.ParameterDefinitionId,
                     Value = v.Value
-                }).ToList()
+                }).ToList() ?? new List<ParameterValue>()
             };
 
             db.MeasurementSessions.Add(session);
@@ -229,9 +270,34 @@ namespace TechDataInput.Controllers
         public ParameterDefinitionsController(AppDbContext db) => _db = db;
 
         [HttpGet]
-        public async Task<IEnumerable<ParameterDefinition>> Get()
+        public async Task<IEnumerable<ParameterDefinition>> Get([FromQuery] int? roleId, [FromQuery] int? equipmentGroupId)
         {
-            return await _db.ParameterDefinitions.ToListAsync();
+            if (roleId != null)
+            {
+                if (equipmentGroupId != null)
+                {
+                    return await _db.ParameterDefinitions.Where(pd => pd.UserRoleId == roleId && pd.EquipmentGroupId == equipmentGroupId).ToListAsync();
+
+                }
+                else
+                {
+                    return await _db.ParameterDefinitions.Where(pd => pd.UserRoleId == roleId).ToListAsync();
+
+                }
+            }
+            else
+            {
+                if (equipmentGroupId != null)
+                {
+                    return await _db.ParameterDefinitions.Where(pd => pd.EquipmentGroupId == equipmentGroupId).ToListAsync();
+
+                }
+                else
+                {
+                    return await _db.ParameterDefinitions.ToListAsync();
+
+                }
+            }
         }
 
         // Добавить новую единицу оборудования
@@ -253,12 +319,7 @@ namespace TechDataInput.Controllers
             var foundPD = await _db.ParameterDefinitions.FindAsync(id);
             if (foundPD == null) return NotFound();
 
-            foundPD.Name = pd.Name;
-            foundPD.Unit = pd.Unit;
-            foundPD.EquipmentGroupId = pd.EquipmentGroupId;
-            foundPD.UserRoleId = pd.UserRoleId;
-            foundPD.PageNumber = pd.PageNumber;
-            foundPD.OrderOnPage = pd.OrderOnPage;
+            foundPD.TakeFromData(pd);
 
             await _db.SaveChangesAsync();
             return NoContent(); // 204, без тела

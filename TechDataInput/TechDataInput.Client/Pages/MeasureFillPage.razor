@@ -24,16 +24,79 @@
     <p>Оборудования: @CurrentEqupment</p>
 </div>
 <div>
-    <p>Страница @CurrentPage / @MaxPages"</p>
+    <p>Страница @(CurrentPage + 1) / @MaxPages"</p>
 </div>
 
 
-@foreach (var param in AllParameters.Where(p => p.PageNumber == CurrentPage))
+<!--@foreach (var param in AllParameters.Where(p => p.PageNumber == CurrentPage))
 {
     <div>
-        <label>@param.Name (@param.Unit)</label>
+        <label>@param.Name (@param.AddInfo)</label>
         <input value="@GetValue(param.Id)" @oninput="e => SetValue(param.Id, e.Value.ToString())" />
     </div>
+}-->
+@if (OrderedParameters.Count > CurrentPage)
+{
+    <table>
+        @foreach (var line in OrderedParameters[CurrentPage])
+        {
+            <tr>
+                <!-- для простой сортировки-->
+                @for (int i = 0; i < MaxCols[CurrentPage]; i++)
+                {
+                    if (line.Count > i)
+                    {
+                        var col = line[i];
+                        var items = (col.ListOfValues ?? "")
+                        .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                        <td>
+                            <label>@col.Name @(string.IsNullOrWhiteSpace(col.AddInfo) ? "" : $"({col.AddInfo})")</label><br />
+                            @if (items.Length > 1)
+                            {
+                                <select @onchange="e => SetValue(col.Id, e.Value.ToString())">
+                                    <option value="">--- Выберите значение ---</option>
+                                    @foreach (var item in items)
+                                    {
+                                        <option value="@item">@item</option>
+                                    }
+                                </select>
+                            }
+                            else
+                            {
+                                var val = GetValue(col.Id) ?? (items.Length == 1 ? items[0] : "");
+                                <input value="@val" @oninput="e => SetValue(col.Id, e.Value.ToString())" />
+                            }
+                        </td>
+
+                    }
+                    else
+                    {
+                        <td></td>
+                    }
+                }
+
+                <!-- Для точной расстановки полей -->
+                <!--@for (int i = 1; i <= MaxCols[CurrentPage]; i++)
+                {
+                var col = line.FirstOrDefault(p => p.ColumnInLine == i);
+                if (col != null)
+                {
+                        <td>
+                            <label>@col.Name (@col.AddInfo)</label>
+                            <input value="@GetValue(col.Id)"
+                                   @oninput="e => SetValue(col.Id, e.Value?.ToString())" />
+                        </td>
+                }
+                else
+                {
+                        <td></td>
+                }
+                }-->
+
+            </tr>
+        }
+
+    </table>
 }
 
 @if (CurrentPage > 0)
@@ -47,7 +110,17 @@
 }
 else
 {
-    <button @onclick="SaveSession">Сохранить</button>
+    <button @onclick="SaveSession">Сохранить и выйти</button>
+}
+@if (ErrorMessage != null)
+{
+    <p style="color: red">@ErrorMessage</p>
+}
+@if (!_loaded)
+{
+    <div class="overlay">
+        <div class="spinner">Загрузка...</div>
+    </div>
 }
 
 @code {
@@ -64,14 +137,19 @@ else
     string? CurrentEqupment;
     int MaxPages = 0;
 
-
     private List<ParameterDefinition> AllParameters = new();
     private int CurrentPage = 0;
 
+    private List<List<List<ParameterDefinition>>> OrderedParameters = new();
+    private List<int> MaxCols = new();
+    private string? ErrorMessage;
+    bool _loaded = false;
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if (firstRender && !_loaded)
         {
+            _loaded = true;
             try
             {
                 Roles = await Http.GetFromJsonAsync<List<UserRole>>("api/userroles") ?? new();
@@ -83,18 +161,31 @@ else
                 SelectedEquipmentId = await LocalStorage.GetItemAsync<int?>(LocalStorageNames.SelectedEquipment) ?? Equipments.FirstOrDefault()?.Id;
 
                 AllParameters = await Http.GetFromJsonAsync<List<ParameterDefinition>>(
-                    $"api/parameterdefinitions?roleId={SelectedRoleId}&equipmentId={SelectedEquipmentId}");
+                    $"api/parameterdefinitions?roleId={SelectedRoleId}&equipmentGroupId={SelectedEquipmentGroupId}");
             }
             catch (Exception ex)
             {
                 Http.PostAsJsonAsync("api/log", new ClientLogEntry("MeasureFillPage/OnInitializedAsync", ex));
             }
             CurrentPage = 0;
-            MaxPages = (AllParameters != null && AllParameters.Count > 0) ? AllParameters.Max(p => p.PageNumber) : 0;
+            //MaxPages = (AllParameters != null && AllParameters.Count > 0) ? AllParameters.Max(p => p.PageNumber) : 0;
             if (SelectedRoleId != null) CurrentRole = Roles.Find(r => r.Id == SelectedRoleId.Value)?.Name ?? "";
             if (SelectedEquipmentGroupId != null) CurrentEquipmentGroup = EquipmentGroups.Find(eg => eg.Id == SelectedEquipmentGroupId.Value)?.Name ?? "";
             if (SelectedEquipmentId != null) CurrentEqupment = Equipments.Find(e => e.Id == SelectedEquipmentId.Value)?.Name ?? "";
             CurrentUser = CurrentRole;
+            OrderedParameters = AllParameters.OrderBy(p1 => p1.PageNumber).ThenBy(p2 => p2.RowOnPage).ThenBy(p3 => p3.ColumnInLine)
+                                .GroupBy(p => p.PageNumber)
+                                .Select(pgPage =>
+                                    pgPage
+                                    .GroupBy(p => p.RowOnPage)
+                                    .Select(pgRow => pgRow.ToList())
+                                    .ToList()
+                                ).ToList();
+            MaxPages = OrderedParameters.Count + 1;
+            // сортировка по значению
+            MaxCols = OrderedParameters.Select(p => p.Max(l => l.Count)).ToList();
+            // для точной расстановки
+            //MaxCols = OrderedParameters.Select(page => page.SelectMany(row => row).Max(p => p.ColumnInLine)).ToList();
             StateHasChanged();
         }
     }
@@ -112,12 +203,20 @@ else
             Session.Values.Add(new ParameterInput() { ParameterDefinitionId = paramId, Value = newValue });
     }
 
-    private void GoBack() => CurrentPage--;
-    private void GoNext() => CurrentPage++;
+    private void GoBack()
+    {
+        CurrentPage--;
+        ErrorMessage = null;
+    }
+    private void GoNext()
+    {
+        CurrentPage++;
+        ErrorMessage = null;
+    }
 
     private bool HasNextPage()
     {
-        return AllParameters.Any(p => p.PageNumber > CurrentPage);
+        return MaxPages > CurrentPage + 1;
     }
 
     private async Task SaveSession()
@@ -129,8 +228,13 @@ else
             Session.UserRoleId = SelectedRoleId.Value;
 
             // отправить Session.Values на сервер
-            await Http.PostAsJsonAsync("api/input", Session);
-            //Nav.NavigateTo("/thankyou");
+            var res = await Http.PostAsJsonAsync("api/input", Session);
+            if (!res.IsSuccessStatusCode)
+            {
+                ErrorMessage = "Ошибка при отправке данных в базу: " + (await res.Content.ReadAsStringAsync());
+                return;
+            }
+            Nav.NavigateTo("/Home");
         }
     }
 

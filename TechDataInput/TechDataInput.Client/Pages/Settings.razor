@@ -2,6 +2,7 @@
 @using TechDataInput.Data
 @using TechDataInput.Data.DataClasses
 @inject HttpClient Http
+@inject NavigationManager Nav
 
 <h3>Settings</h3>
 
@@ -12,7 +13,6 @@
     <li>
         <EquipmentGroupEdit EquipmentGroups="EquipmentGroups" UpdateEquipmentGroups="GetEquipmentGroups" />
     </li>
-    <hr />
     <li>
         <EquipmentEdit EquipmentGroups="EquipmentGroups" Equipments="Equipments" UpdateEquipments="GetEquipments" />
     </li>
@@ -21,13 +21,21 @@
     </li>
 </ol>
 
+<button @onclick="GoHome">⇐ Назад</button>
+@if (!_loaded)
+{
+    <div class="overlay">
+        <div class="spinner">Загрузка...</div>
+    </div>
+}
+
 @code {
     List<UserRole> Roles = new();
     List<EquipmentGroup> EquipmentGroups = new();
     List<Equipment> Equipments = new();
     List<ParameterDefinition> ParameterDefinitions = new();
 
-
+    bool _loaded = false;
 
 
     int? SelectedRoleIdForParameters;
@@ -63,8 +71,9 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if (firstRender && !_loaded)
         {
+            _loaded = true;
             await LoadData();
             StateHasChanged();
         }
@@ -77,6 +86,7 @@
             EquipmentGroups = await Http.GetFromJsonAsync<List<EquipmentGroup>>("api/equipmentgroup") ?? new();
             Equipments = await Http.GetFromJsonAsync<List<Equipment>>("api/equipment") ?? new();
             ParameterDefinitions = await Http.GetFromJsonAsync<List<ParameterDefinition>>("api/parameterdefinitions") ?? new();
+            //ParameterDefinitions = ParameterDefinitions.OrderBy(p1 => p1.PageNumber).ThenBy(p2 => p2.RowOnPage).ThenBy(p3 => p3.ColumnInLine).ToList();
 
         }
         catch (Exception ex)
@@ -130,6 +140,7 @@
         try
         {
             ParameterDefinitions = await Http.GetFromJsonAsync<List<ParameterDefinition>>("api/parameterdefinitions") ?? new();
+            //ParameterDefinitions = ParameterDefinitions.OrderBy(p1 => p1.PageNumber).ThenBy(p2 => p2.RowOnPage).ThenBy(p3 => p3.ColumnInLine).ToList();
         }
         catch (Exception ex)
         {
@@ -139,4 +150,8 @@
 
     }
 
+    private void GoHome()
+    {
+        Nav.NavigateTo("/");
+    }
 }

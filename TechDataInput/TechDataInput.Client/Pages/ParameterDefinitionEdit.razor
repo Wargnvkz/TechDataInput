@@ -34,9 +34,11 @@
                 <td>Название роли</td>
                 <td>Название типа оборудования</td>
                 <td>Название параметра</td>
-                <td>Единица измерения</td>
+                <td>Доп. инфо</td>
                 <td>Номер страницы</td>
                 <td>Порядковый номер на странице</td>
+                <td>Порядковый номер в строке</td>
+                <td>Список значений</td>
                 <td>Действия</td>
             </tr>
         </thead>
@@ -69,9 +71,11 @@
                         </select>
                     </td>
                     <td><input @bind="EditingRecord.Name" /></td>
-                    <td><input @bind="EditingRecord.Unit" /> </td>
+                    <td><input @bind="EditingRecord.AddInfo" /> </td>
                     <td><input type="number" @bind="EditingRecord.PageNumber" /></td>
-                    <td><input type="number" @bind="EditingRecord.OrderOnPage" /> </td>
+                    <td><input type="number" @bind="EditingRecord.RowOnPage" /> </td>
+                    <td><input type="number" @bind="EditingRecord.ColumnInLine" /> </td>
+                    <td><input type="number" @bind="EditingRecord.ListOfValues" /> </td>
                     <td>
                         <button @onclick="() => SaveParameter(EditingRecord)">💾</button>
                         <button @onclick="CancelParameterEdit">❌</button>
@@ -82,9 +86,11 @@
                     <td>@(dictRoles.ContainsKey(parameter.UserRoleId) ? dictRoles[parameter.UserRoleId].Name : "")</td>
                     <td>@(dictEquipmentGroups.ContainsKey(parameter.EquipmentGroupId) ? dictEquipmentGroups[parameter.EquipmentGroupId].Name : "")</td>
                     <td>@(parameter.Name)</td>
-                    <td>@(parameter.Unit)</td>
+                    <td>@(parameter.AddInfo)</td>
                     <td>@(parameter.PageNumber)</td>
-                    <td>@(parameter.OrderOnPage)</td>
+                    <td>@(parameter.RowOnPage)</td>
+                    <td>@(parameter.ColumnInLine)</td>
+                    <td>@(parameter.ListOfValues)</td>
                     <td>
                         <button @onclick="() => StartParameterEdit(parameter)">✏️</button>
                         <button @onclick="() => DeleteParameter(parameter)">🗑</button>
@@ -94,15 +100,36 @@
         }
     </table>
     <p>
-        Имя нового параметра:
-        <input @bind="newRecord.Name" />
-        Измерение нового параметра:
-        <input @bind="newRecord.Unit" />
-        Номер страницы:
-        <input @bind="newRecord.PageNumber" />
-        порядковый номер на странице:
-        <input @bind="newRecord.OrderOnPage" />
-        <br />
+        <table>
+            <tr>
+                <td>Имя нового параметра</td>
+                <td>Доп. информация параметра</td>
+                <td>Номер страницы</td>
+                <td>Строка странице</td>
+                <td>Колонка в строке</td>
+                <td>Список значений</td>
+            </tr>
+            <tr>
+                <td>
+                    <input @bind="newRecord.Name" />
+                </td>
+                <td>
+                    <input @bind="newRecord.AddInfo" />
+                </td>
+                <td>
+                    <input @bind="newRecord.PageNumber" />
+                </td>
+                <td>
+                    <input @bind="newRecord.RowOnPage" />
+                </td>
+                <td>
+                    <input @bind="newRecord.ColumnInLine" />
+                </td>
+                <td>
+                    <input @bind="newRecord.ListOfValues" />
+                </td>
+            </tr>
+        </table>
         <button @onclick="AddNewParameter">Добавить новый параметр</button>
     </p>
     @if (ParameterDefinitionValidationMessage != null)
@@ -157,6 +184,7 @@
             dictRoles = Roles.ToDictionary(r => r.Id);
         if (EquipmentGroups != null)
             dictEquipmentGroups = EquipmentGroups.ToDictionary(eg => eg.Id);
+        ParameterDefinitions = ParameterDefinitions.OrderBy(p1 => p1.PageNumber).ThenBy(p2 => p2.RowOnPage).ThenBy(p3 => p3.ColumnInLine).ToList();
         FilterLists(_SelectedRoleId, _SelectedEquipmentGroupId);
     }
     private void FilterLists(int? SelectedRoleId, int? SelectedEquipmentGroupId)
@@ -191,11 +219,6 @@
         if (string.IsNullOrWhiteSpace(pd.Name))
         {
             ParameterDefinitionValidationMessage = "Название параметра не может быть пустым";
-            return;
-        }
-        if (string.IsNullOrWhiteSpace(pd.Unit))
-        {
-            ParameterDefinitionValidationMessage = "Поле единица измерения не может быть пустым";
             return;
         }
 
