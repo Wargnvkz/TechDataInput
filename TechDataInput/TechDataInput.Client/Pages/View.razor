@@ -1,7 +1,7 @@
 ﻿@page "/View"
 @using TechDataInput.Data
 @inject HttpClient Http
-<h3>Просмотр</h3>
+<h3>Просмотр введенных данных</h3>
 
 <div>
     <p>Тип пользователя:</p>
@@ -42,7 +42,7 @@
     <br />
     Измерения:
     <br />
-    @if (MeasurementSessions != null && MeasurementSessions.Count > 0 && AllParameterDefinitions!=null)
+    @if (MeasurementSessions != null && MeasurementSessions.Count > 0 && AllParameterDefinitions != null)
     {
         int headerIndex = MeasurementSessions.Max(ms => ms.Values.Count);
         <table class="list">
@@ -82,7 +82,7 @@
                     <!--@foreach (var value in session.Values)
                     {
                         <td>
-                            @value.Value
+                        @value.Value
                         </td>
                     }-->
                 </tr>
