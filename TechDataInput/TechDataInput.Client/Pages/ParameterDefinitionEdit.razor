@@ -132,6 +132,30 @@
         </table>
         <button @onclick="AddNewParameter">Добавить новый параметр</button>
     </p>
+    <div>
+        <p>Копирование параметров типов оборудования</p>
+        Из:
+        <select @bind="SelectedFromEquipmentGroupId">
+            <option value="">-- выберите группу --</option>
+            @foreach (var eqGr in EquipmentGroups)
+            {
+                <option value="@eqGr.Id">
+                    @eqGr.Name
+                </option>
+            }
+        </select>
+        В:
+        <select @bind="SelectedToEquipmentGroupId">
+            <option value="">-- выберите группу --</option>
+            @foreach (var eqGr in EquipmentGroups)
+            {
+                <option value="@eqGr.Id">
+                    @eqGr.Name
+                </option>
+            }
+        </select>
+        <button @onclick="CopyParameters">Скопировать параметры</button>
+    </div>
     @if (ParameterDefinitionValidationMessage != null)
     {
         <p style="color: red">@ParameterDefinitionValidationMessage</p>
@@ -143,6 +167,7 @@
     [Parameter] public List<EquipmentGroup> EquipmentGroups { get; set; } = new();
     [Parameter] public List<ParameterDefinition> ParameterDefinitions { get; set; } = new();
     [Parameter] public Func<Task> UpdateParameterDefinitions { get; set; }
+    [Parameter] public Func<int, int, Task> CopyParameterDefinitions { get; set; }
 
 
     public List<ParameterDefinition> FilteredParameterDefinitions { get; set; } = new();
@@ -172,6 +197,8 @@
         }
 
     }
+    public int? SelectedFromEquipmentGroupId;
+    public int? SelectedToEquipmentGroupId;
     ParameterDefinition newRecord = new();
     ParameterDefinition EditingRecord = null;
     string? ParameterDefinitionValidationMessage = null;
@@ -284,4 +311,18 @@
             newRecord = new();
         }
     }
+    private async Task CopyParameters()
+    {
+        ResetParameterValidateMessages();
+        if (SelectedFromEquipmentGroupId == null || SelectedToEquipmentGroupId == null)
+        {
+            ParameterDefinitionValidationMessage = "Нужно выбрать группы оборудования для копирования";
+            return;
+        }
+        if (CopyParameterDefinitions != null)
+        {
+            await CopyParameterDefinitions(SelectedFromEquipmentGroupId.Value, SelectedToEquipmentGroupId.Value);
+        }
+    }
+
 }

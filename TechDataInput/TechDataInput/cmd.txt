@@ -1,0 +1,1 @@
+﻿dotnet publish TechDataInput/TechDataInput/TechDataInput.csproj -c Release -o ./publish

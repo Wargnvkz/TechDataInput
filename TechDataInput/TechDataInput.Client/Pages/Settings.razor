@@ -17,7 +17,7 @@
         <EquipmentEdit EquipmentGroups="EquipmentGroups" Equipments="Equipments" UpdateEquipments="GetEquipments" />
     </li>
     <li>
-        <ParameterDefinitionEdit Roles="Roles" EquipmentGroups="EquipmentGroups" ParameterDefinitions="ParameterDefinitions" UpdateParameterDefinitions="GetParameterDefinitions" />
+        <ParameterDefinitionEdit Roles="Roles" EquipmentGroups="EquipmentGroups" ParameterDefinitions="ParameterDefinitions" UpdateParameterDefinitions="GetParameterDefinitions" CopyParameterDefinitions="CopyParameterDefinitions" />
     </li>
 </ol>
 
@@ -136,6 +136,19 @@
 
     }
     protected async Task GetParameterDefinitions()
+    {
+        try
+        {
+            ParameterDefinitions = await Http.GetFromJsonAsync<List<ParameterDefinition>>("api/parameterdefinitions") ?? new();
+            //ParameterDefinitions = ParameterDefinitions.OrderBy(p1 => p1.PageNumber).ThenBy(p2 => p2.RowOnPage).ThenBy(p3 => p3.ColumnInLine).ToList();
+        }
+        catch (Exception ex)
+        {
+            await Http.PostAsJsonAsync("api/log", new ClientLogEntry("Settings", ex));
+        }
+        StateHasChanged();
+    }
+    protected async Task CopyParameterDefinitions(int FromEquipmentGroupId, int ToEquipmentGroupId)
     {
         try
         {

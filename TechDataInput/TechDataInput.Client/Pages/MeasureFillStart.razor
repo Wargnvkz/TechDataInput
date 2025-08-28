@@ -21,6 +21,7 @@
 <div>
     <p>Тип пользователя:</p>
     <select @bind="SelectedRoleId">
+        <option value="">-- выберите группу --</option>
         @foreach (var role in Roles)
         {
             <option value="@role.Id" selected="@(SelectedRoleId == role.Id)">
@@ -32,6 +33,7 @@
 <div>
     <p>Тип оборудования:</p>
     <select @bind="SelectedEquipmentGroupId">
+        <option value="">-- выберите группу --</option>
         @foreach (var eqGr in EquipmentGroups)
         {
             <option value="@eqGr.Id" selected="@(SelectedEquipmentGroupId == eqGr.Id)">
@@ -43,6 +45,7 @@
 <div>
     <p>Оборудование:</p>
     <select @bind="SelectedEquipmentId">
+        <option value="">-- выберите группу --</option>
         @foreach (var eq in FilteredEquipments)
         {
             <option value="@eq.Id" selected="@(SelectedEquipmentId == eq.Id)">

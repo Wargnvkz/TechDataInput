@@ -181,7 +181,7 @@ else
                                     .Select(pgRow => pgRow.ToList())
                                     .ToList()
                                 ).ToList();
-            MaxPages = OrderedParameters.Count + 1;
+            MaxPages = OrderedParameters.Count;
             // сортировка по значению
             MaxCols = OrderedParameters.Select(p => p.Max(l => l.Count)).ToList();
             // для точной расстановки
@@ -234,7 +234,7 @@ else
                 ErrorMessage = "Ошибка при отправке данных в базу: " + (await res.Content.ReadAsStringAsync());
                 return;
             }
-            Nav.NavigateTo("/Home");
+            Nav.NavigateTo("/");
         }
     }
 
