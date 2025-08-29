@@ -167,7 +167,6 @@
     [Parameter] public List<EquipmentGroup> EquipmentGroups { get; set; } = new();
     [Parameter] public List<ParameterDefinition> ParameterDefinitions { get; set; } = new();
     [Parameter] public Func<Task> UpdateParameterDefinitions { get; set; }
-    [Parameter] public Func<int, int, Task> CopyParameterDefinitions { get; set; }
 
 
     public List<ParameterDefinition> FilteredParameterDefinitions { get; set; } = new();
@@ -319,10 +318,29 @@
             ParameterDefinitionValidationMessage = "Нужно выбрать группы оборудования для копирования";
             return;
         }
-        if (CopyParameterDefinitions != null)
+        ParameterDefinitions = await Http.GetFromJsonAsync<List<ParameterDefinition>>("api/parameterdefinitions") ?? new();
+        var parametersToCopy = ParameterDefinitions.FindAll(pd => pd.EquipmentGroupId == SelectedFromEquipmentGroupId.Value);
+        bool error = false;
+        string answer = null;
+        foreach (var pd in parametersToCopy)
         {
-            await CopyParameterDefinitions(SelectedFromEquipmentGroupId.Value, SelectedToEquipmentGroupId.Value);
+            pd.EquipmentGroupId = SelectedToEquipmentGroupId.Value;
+            pd.Id = 0;
+            var response = await Http.PostAsJsonAsync<ParameterDefinition>("api/parameterdefinitions", pd);
+            if (!response.IsSuccessStatusCode)
+            {
+                error = true;
+                answer = await response.Content.ReadAsStringAsync();
+            }
         }
+        if (error)
+        {
+            ParameterDefinitionValidationMessage = $"Не удалось сохранить новый параметр({answer ?? ""})";
+        }
+        if (UpdateParameterDefinitions != null) await UpdateParameterDefinitions();
+        SelectedEquipmentGroupId = SelectedEquipmentGroupId;
+
     }
+
 
 }
