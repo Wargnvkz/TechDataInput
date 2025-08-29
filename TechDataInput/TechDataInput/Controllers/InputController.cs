@@ -355,7 +355,7 @@ namespace TechDataInput.Controllers
             // Пример сохранения, если у тебя есть таблица в БД
             // _db.ClientLogs.Add(log);
             // await _db.SaveChangesAsync();
-
+            await Task.Yield();
             return Ok();
         }
 

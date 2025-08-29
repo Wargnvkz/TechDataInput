@@ -91,6 +91,10 @@
         </table>
     }
 </div>
+@if (EquipmentValidationMessage != null)
+{
+    <p style="color: red">@EquipmentValidationMessage</p>
+}
 @if (!_loaded)
 {
     <div class="overlay">
@@ -121,7 +125,7 @@
     }
     int? SelectedEquipmentId;
 
-    string? ValidationMessage = null;
+    string? EquipmentValidationMessage = null;
     List<Equipment> FilteredEquipments = new();
 
     List<UserRole> Roles = new();
