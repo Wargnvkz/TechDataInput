@@ -6,6 +6,7 @@
 <div>
     <p>Тип пользователя:</p>
     <select @bind="SelectedRoleId">
+        <option value="">-- выберите роль --</option>
         @foreach (var role in Roles)
         {
             <option value="@role.Id" selected="@(SelectedRoleId == role.Id)">
@@ -15,8 +16,9 @@
     </select>
 </div>
 <div>
-    <p>Тип оборудования:</p>
+    <p>Группа оборудования:</p>
     <select @bind="SelectedEquipmentGroupId">
+        <option value="">-- выберите группу --</option>
         @foreach (var eqGr in EquipmentGroups)
         {
             <option value="@eqGr.Id" selected="@(SelectedEquipmentGroupId == eqGr.Id)">
@@ -28,6 +30,7 @@
 <div>
     <p>Оборудование:</p>
     <select @bind="SelectedEquipmentId">
+        <option value="">-- выберите оборудование --</option>
         @foreach (var eq in FilteredEquipments)
         {
             <option value="@eq.Id" selected="@(SelectedEquipmentId == eq.Id)">
@@ -39,11 +42,11 @@
 <button @onclick="ShowMeasurement">Показать измерения</button>
 
 <div>
-    <br />
-    Измерения:
-    <br />
     @if (MeasurementSessions != null && MeasurementSessions.Count > 0 && AllParameterDefinitions != null)
     {
+        <br />
+        <p>Измерения:</p>
+
         int headerIndex = MeasurementSessions.Max(ms => ms.Values.Count);
         <table class="list">
             <thead>
@@ -90,6 +93,14 @@
             }
         </table>
     }
+    else
+    {
+        if (MeasurementSessions != null && MeasurementSessions.Count == 0)
+        {
+            <p>Нет данных</p>
+        }
+    }
+
 </div>
 @if (EquipmentValidationMessage != null)
 {
@@ -131,7 +142,7 @@
     List<UserRole> Roles = new();
     List<EquipmentGroup> EquipmentGroups = new();
     List<Equipment> Equipments = new();
-    private List<MeasurementSessionDto> MeasurementSessions = new();
+    private List<MeasurementSessionDto> MeasurementSessions;
     Dictionary<int, string>? AllParameterDefinitions;
 
     bool _loaded = false;
@@ -152,6 +163,10 @@
             StateHasChanged();
         }
     }
+    private void ResetEquipmentValidateMessages()
+    {
+        EquipmentValidationMessage = null;
+    }
     private async Task ShowMeasurement()
     {
         await LoadData(SelectedRoleId, SelectedEquipmentId);
@@ -159,6 +174,12 @@
 
     private async Task LoadData(int? roleid, int? equipmentid)
     {
+        ResetEquipmentValidateMessages();
+        if (roleid == null || equipmentid == null)
+        {
+            EquipmentValidationMessage = "Нужно выбрать роль и оборудование";
+            return;
+        }
         MeasurementSessions = await Http.GetFromJsonAsync<List<MeasurementSessionDto>>($"api/input?roleId={roleid}&equipmentId={equipmentid}") ?? new();
         MeasurementSessions = MeasurementSessions.OrderBy(ms => ms.Timestamp).ToList();
         AllParameterDefinitions = new();

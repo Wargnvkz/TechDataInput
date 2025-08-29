@@ -4,7 +4,7 @@
 @inject HttpClient Http
 @inject NavigationManager Nav
 
-<h3>Settings</h3>
+<h3>Настройки</h3>
 
 <ol>
     <li>
@@ -36,38 +36,7 @@
     List<ParameterDefinition> ParameterDefinitions = new();
 
     bool _loaded = false;
-
-
-    /*int? SelectedRoleIdForParameters;
-
-    int? _selectedEquipmentGroupIdForParameters;
-    int? SelectedEquipmentGroupIdForParameters
-    {
-        get => _selectedEquipmentGroupIdForParameters;
-        set
-        {
-            if (_selectedEquipmentGroupIdForParameters != value)
-            {
-                _selectedEquipmentGroupIdForParameters = value;
-
-
-                // Если ты хочешь, чтобы UI сразу обновился — можно вызвать:
-                StateHasChanged();
-            }
-        }
-    }
-
-    private void FilterLists(int? SelectedRoleId, int? SelectedEquipmentGroupId)
-    {
-        FilteredEquipments = Equipments
-            .Where(eq => eq.EquipmentGroupId == SelectedEquipmentGroupId)
-            .ToList();
-        FilteredParameterDefinitions = ParameterDefinitions.Where(pd => pd.UserRoleId == SelectedRoleIdForParameters && pd.EquipmentGroupId == SelectedEquipmentGroupIdForParameters).ToList();
-    }
-
-    List<Equipment> FilteredEquipments = new();
-    List<ParameterDefinition> FilteredParameterDefinitions = new();*/
-
+          
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
