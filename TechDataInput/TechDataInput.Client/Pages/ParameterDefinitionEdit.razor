@@ -75,7 +75,7 @@
                     <td><input type="number" @bind="EditingRecord.PageNumber" /></td>
                     <td><input type="number" @bind="EditingRecord.RowOnPage" /> </td>
                     <td><input type="number" @bind="EditingRecord.ColumnInLine" /> </td>
-                    <td><input type="number" @bind="EditingRecord.ListOfValues" /> </td>
+                    <td><input type="text" @bind="EditingRecord.ListOfValues" style="width:99%;" /> </td>
                     <td>
                         <button @onclick="() => SaveParameter(EditingRecord)">💾</button>
                         <button @onclick="CancelParameterEdit">❌</button>
