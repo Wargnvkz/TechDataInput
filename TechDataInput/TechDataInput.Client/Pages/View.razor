@@ -51,15 +51,15 @@
         <table class="list">
             <thead>
                 <tr>
-                    <td>
+                    <td class="sticky">
                         N
                     </td>
-                    <td>
+                    <td class="sticky">
                         Время
                     </td>
                     @foreach (var kv in AllParameterDefinitions)
                     {
-                        <td>
+                        <td class="sticky verticaltext">
                             @kv.Value
                         </td>
                     }
@@ -68,6 +68,7 @@
             @{
                 int N = 1;
             }
+
             @foreach (var session in MeasurementSessions)
             {
                 <tr>
@@ -79,18 +80,13 @@
                     @foreach (var def in AllParameterDefinitions)
                     {
                         var value = session.Values.FirstOrDefault(v => v.ParameterDefinitionId == def.Key);
-                        <td>@(value?.Value ?? "")</td>
+                        <td style="padding: 5px;">@(value?.Value ?? "")</td>
                     }
 
-                    <!--@foreach (var value in session.Values)
-                    {
-                        <td>
-                        @value.Value
-                        </td>
-                    }-->
                 </tr>
                 N++;
             }
+
         </table>
     }
     else

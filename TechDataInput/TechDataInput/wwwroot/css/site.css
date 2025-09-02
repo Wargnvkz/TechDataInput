@@ -19,7 +19,7 @@
     font-weight: bold;
 }
 
-table.list tr td, table.list tr, table.list {
+table.list tr td, table.list tr th, table.list thead tr th, table.list tr, table.list {
     border-collapse: collapse;
     border: 1px solid;
 }
@@ -27,4 +27,15 @@ table.list tr td, table.list tr, table.list {
 div.block {
     margin: 10px 10px 50px 10px;
     /* border-bottom: 1px solid; */
+}
+
+.sticky {
+    position: sticky;
+    top: 0;
+    background: #fff; /* чтобы заголовок не сливался с данными при прокрутке */
+    z-index: 2; /* чтобы был поверх */
+}
+
+.verticaltext {
+    writing-mode: vertical-lr;
 }
