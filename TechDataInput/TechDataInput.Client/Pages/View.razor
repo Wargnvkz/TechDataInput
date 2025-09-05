@@ -59,8 +59,8 @@
                     </td>
                     @foreach (var kv in AllParameterDefinitions)
                     {
-                        <td class="sticky verticaltext">
-                            @kv.Value
+                        <td class="sticky">
+                            <span class="verticaltext">@kv.Value</span>
                         </td>
                     }
                 </tr>
@@ -80,7 +80,7 @@
                     @foreach (var def in AllParameterDefinitions)
                     {
                         var value = session.Values.FirstOrDefault(v => v.ParameterDefinitionId == def.Key);
-                        <td style="padding: 5px;">@(value?.Value ?? "")</td>
+                        <td>@(value?.Value ?? "")</td>
                     }
 
                 </tr>

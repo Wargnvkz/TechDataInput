@@ -60,182 +60,183 @@
                                         <option value="@item">@item</option>
                                     }
                                 </select>
+                            }
+                            else
+                            {
+                                var val = GetValue(col.Id) ?? (items.Length == 1 ? items[0] : "");
+                                <input value="@val" @oninput="e => SetValue(col.Id, e.Value.ToString())" />
+                            }
+                        </td>
+
+                    }
+                    else
+                    {
+                        <td></td>
+                    }
                 }
-            else
+
+                <!-- Для точной расстановки полей -->
+                <!--@for (int i = 1; i <= MaxCols[CurrentPage]; i++)
                 {
-                    var val = GetValue(col.Id) ?? (items.Length == 1 ? items[0] : "");
-                    <input value="@val" @oninput="e => SetValue(col.Id, e.Value.ToString())" />
+                var col = line.FirstOrDefault(p => p.ColumnInLine == i);
+                if (col != null)
+                {
+                        <td>
+                            <label>@col.Name (@col.AddInfo)</label>
+                            <input value="@GetValue(col.Id)"
+                                   @oninput="e => SetValue(col.Id, e.Value?.ToString())" />
+                        </td>
                 }
-            </td>
+                else
+                {
+                        <td></td>
+                }
+                }-->
 
-        }
-        else
-        {
-            <td></td>
-        }
+            </tr>
         }
 
-        <!-- Для точной расстановки полей -->
-        <!--@for (int i = 1; i <= MaxCols[CurrentPage]; i++)
-        {
-        var col = line.FirstOrDefault(p => p.ColumnInLine == i);
-        if (col != null)
-        {
-                <td>
-                    <label>@col.Name (@col.AddInfo)</label>
-                    <input value="@GetValue(col.Id)"
-                           @oninput="e => SetValue(col.Id, e.Value?.ToString())" />
-                </td>
-        }
-        else
-        {
-                <td></td>
-        }
-        }-->
-
-    </tr>
-    }
-
-</table>
+    </table>
 }
 
 @if (CurrentPage > 0)
 {
-<button @onclick="GoBack">Назад</button>
+    <button @onclick="GoBack">Назад</button>
 }
 
 @if (HasNextPage())
 {
-<button @onclick="GoNext">Далее</button>
+    <button @onclick="GoNext">Далее</button>
 }
 else
 {
-<button @onclick="SaveSession">Сохранить и выйти</button>
+    <button @onclick="SaveSession">Сохранить и выйти</button>
 }
 @if (ErrorMessage != null)
 {
-<p style="color: red">@ErrorMessage</p>
+    <p style="color: red">@ErrorMessage</p>
 }
 @if (!_loaded)
 {
-<div class="overlay">
-    <div class="spinner">Загрузка...</div>
-</div>
+    <div class="overlay">
+        <div class="spinner">Загрузка...</div>
+    </div>
 }
 
 @code {
 
     List<UserRole> Roles = new();
-List<EquipmentGroup> EquipmentGroups = new();
-List<Equipment> Equipments = new();
-int? SelectedRoleId;
-int? SelectedEquipmentGroupId;
-int? SelectedEquipmentId;
-string? CurrentUser;
-string? CurrentRole;
-string? CurrentEquipmentGroup;
-string? CurrentEqupment;
-int MaxPages = 0;
+    List<EquipmentGroup> EquipmentGroups = new();
+    List<Equipment> Equipments = new();
+    int? SelectedRoleId;
+    int? SelectedEquipmentGroupId;
+    int? SelectedEquipmentId;
+    string? CurrentUser;
+    string? CurrentRole;
+    string? CurrentEquipmentGroup;
+    string? CurrentEqupment;
+    int MaxPages = 0;
 
-private List<ParameterDefinition> AllParameters = new();
-private int CurrentPage = 0;
+    private List<ParameterDefinition> AllParameters = new();
+    private int CurrentPage = 0;
 
-private List<List<List<ParameterDefinition>>> OrderedParameters = new();
-private List<int> MaxCols = new();
-private string? ErrorMessage;
-bool _loaded = false;
+    private List<List<List<ParameterDefinition>>> OrderedParameters = new();
+    private List<int> MaxCols = new();
+    private string? ErrorMessage;
+    bool _loaded = false;
 
-protected override async Task OnAfterRenderAsync(bool firstRender)
-{
-    if (firstRender && !_loaded)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-    _loaded = true;
-    try
+        if (firstRender && !_loaded)
+        {
+            _loaded = true;
+            try
+            {
+                Roles = await Http.GetFromJsonAsync<List<UserRole>>("api/userroles") ?? new();
+                EquipmentGroups = await Http.GetFromJsonAsync<List<EquipmentGroup>>("api/equipmentgroup") ?? new();
+                Equipments = await Http.GetFromJsonAsync<List<Equipment>>("api/equipment") ?? new();
+
+                SelectedRoleId = await LocalStorage.GetItemAsync<int?>(LocalStorageNames.SelectedRole) ?? Roles.FirstOrDefault()?.Id;
+                SelectedEquipmentGroupId = await LocalStorage.GetItemAsync<int?>(LocalStorageNames.SelectedEquipmentGroup) ?? EquipmentGroups.FirstOrDefault()?.Id;
+                SelectedEquipmentId = await LocalStorage.GetItemAsync<int?>(LocalStorageNames.SelectedEquipment) ?? Equipments.FirstOrDefault()?.Id;
+
+                AllParameters = await Http.GetFromJsonAsync<List<ParameterDefinition>>(
+                    $"api/parameterdefinitions?roleId={SelectedRoleId}&equipmentGroupId={SelectedEquipmentGroupId}");
+            }
+            catch (Exception ex)
+            {
+                await Http.PostAsJsonAsync("api/log", new ClientLogEntry("MeasureFillPage/OnInitializedAsync", ex));
+            }
+            CurrentPage = 0;
+            //MaxPages = (AllParameters != null && AllParameters.Count > 0) ? AllParameters.Max(p => p.PageNumber) : 0;
+            if (SelectedRoleId != null) CurrentRole = Roles.Find(r => r.Id == SelectedRoleId.Value)?.Name ?? "";
+            if (SelectedEquipmentGroupId != null) CurrentEquipmentGroup = EquipmentGroups.Find(eg => eg.Id == SelectedEquipmentGroupId.Value)?.Name ?? "";
+            if (SelectedEquipmentId != null) CurrentEqupment = Equipments.Find(e => e.Id == SelectedEquipmentId.Value)?.Name ?? "";
+            CurrentUser = CurrentRole;
+            OrderedParameters = AllParameters.OrderBy(p1 => p1.PageNumber).ThenBy(p2 => p2.RowOnPage).ThenBy(p3 => p3.ColumnInLine)
+                                .GroupBy(p => p.PageNumber)
+                                .Select(pgPage =>
+                                    pgPage
+                                    .GroupBy(p => p.RowOnPage)
+                                    .Select(pgRow => pgRow.ToList())
+                                    .ToList()
+                                ).ToList();
+            MaxPages = OrderedParameters.Count;
+            // сортировка по значению
+            MaxCols = OrderedParameters.Select(p => p.Max(l => l.Count)).ToList();
+            // для точной расстановки
+            //MaxCols = OrderedParameters.Select(page => page.SelectMany(row => row).Max(p => p.ColumnInLine)).ToList();
+            StateHasChanged();
+        }
+    }
+    private string GetValue(int paramId)
     {
-        Roles = await Http.GetFromJsonAsync<List<UserRole>>("api/userroles") ?? new();
-        EquipmentGroups = await Http.GetFromJsonAsync<List<EquipmentGroup>>("api/equipmentgroup") ?? new();
-        Equipments = await Http.GetFromJsonAsync<List<Equipment>>("api/equipment") ?? new();
-
-        SelectedRoleId = await LocalStorage.GetItemAsync<int?>(LocalStorageNames.SelectedRole) ?? Roles.FirstOrDefault()?.Id;
-        SelectedEquipmentGroupId = await LocalStorage.GetItemAsync<int?>(LocalStorageNames.SelectedEquipmentGroup) ?? EquipmentGroups.FirstOrDefault()?.Id;
-        SelectedEquipmentId = await LocalStorage.GetItemAsync<int?>(LocalStorageNames.SelectedEquipment) ?? Equipments.FirstOrDefault()?.Id;
-
-        AllParameters = await Http.GetFromJsonAsync<List<ParameterDefinition>>(
-            $"api/parameterdefinitions?roleId={SelectedRoleId}&equipmentGroupId={SelectedEquipmentGroupId}");
+        return Session.Values.FirstOrDefault(v => v.ParameterDefinitionId == paramId)?.Value ?? "";
     }
-    catch (Exception ex)
+
+    private void SetValue(int paramId, string newValue)
     {
-        await Http.PostAsJsonAsync("api/log", new ClientLogEntry("MeasureFillPage/OnInitializedAsync", ex));
+        var existing = Session.Values.FirstOrDefault(v => v.ParameterDefinitionId == paramId);
+        if (existing != null)
+            existing.Value = newValue;
+        else
+            Session.Values.Add(new ParameterInput() { ParameterDefinitionId = paramId, Value = newValue });
     }
-    CurrentPage = 0;
-    //MaxPages = (AllParameters != null && AllParameters.Count > 0) ? AllParameters.Max(p => p.PageNumber) : 0;
-    if (SelectedRoleId != null) CurrentRole = Roles.Find(r => r.Id == SelectedRoleId.Value)?.Name ?? "";
-    if (SelectedEquipmentGroupId != null) CurrentEquipmentGroup = EquipmentGroups.Find(eg => eg.Id == SelectedEquipmentGroupId.Value)?.Name ?? "";
-    if (SelectedEquipmentId != null) CurrentEqupment = Equipments.Find(e => e.Id == SelectedEquipmentId.Value)?.Name ?? "";
-    CurrentUser = CurrentRole;
-    OrderedParameters = AllParameters.OrderBy(p1 => p1.PageNumber).ThenBy(p2 => p2.RowOnPage).ThenBy(p3 => p3.ColumnInLine)
-                        .GroupBy(p => p.PageNumber)
-                        .Select(pgPage =>
-                            pgPage
-                            .GroupBy(p => p.RowOnPage)
-                            .Select(pgRow => pgRow.ToList())
-                            .ToList()
-                        ).ToList();
-    MaxPages = OrderedParameters.Count;
-    // сортировка по значению
-    MaxCols = OrderedParameters.Select(p => p.Max(l => l.Count)).ToList();
-    // для точной расстановки
-    //MaxCols = OrderedParameters.Select(page => page.SelectMany(row => row).Max(p => p.ColumnInLine)).ToList();
-    StateHasChanged();
-    }
-}
-private string GetValue(int paramId)
-{
-    return Session.Values.FirstOrDefault(v => v.ParameterDefinitionId == paramId)?.Value ?? "";
-}
 
-private void SetValue(int paramId, string newValue)
-{
-    var existing = Session.Values.FirstOrDefault(v => v.ParameterDefinitionId == paramId);
-    if (existing != null)
-    existing.Value = newValue;
-    else
-    Session.Values.Add(new ParameterInput() { ParameterDefinitionId = paramId, Value = newValue });
-}
-
-private void GoBack()
-{
-    CurrentPage--;
-    ErrorMessage = null;
-}
-private void GoNext()
-{
-    CurrentPage++;
-    ErrorMessage = null;
-}
-
-private bool HasNextPage()
-{
-    return MaxPages > CurrentPage + 1;
-}
-
-private async Task SaveSession()
-{
-    if (CurrentUser != null && SelectedEquipmentId != null && SelectedRoleId != null)
+    private void GoBack()
     {
-    Session.EnteredBy = CurrentUser ?? "?";
-    Session.EquipmentId = SelectedEquipmentId.Value;
-    Session.UserRoleId = SelectedRoleId.Value;
-
-    // отправить Session.Values на сервер
-    var res = await Http.PostAsJsonAsync("api/input", Session);
-    if (!res.IsSuccessStatusCode)
+        CurrentPage--;
+        ErrorMessage = null;
+    }
+    private void GoNext()
     {
-        ErrorMessage = "Ошибка при отправке данных в базу: " + (await res.Content.ReadAsStringAsync());
-        return;
+        CurrentPage++;
+        ErrorMessage = null;
     }
-    Nav.NavigateTo("/");
+
+    private bool HasNextPage()
+    {
+        return MaxPages > CurrentPage + 1;
     }
-}
+
+    private async Task SaveSession()
+    {
+        if (CurrentUser != null && SelectedEquipmentId != null && SelectedRoleId != null)
+        {
+            Session.EnteredBy = CurrentUser ?? "?";
+            Session.EquipmentId = SelectedEquipmentId.Value;
+            Session.UserRoleId = SelectedRoleId.Value;
+
+            // отправить Session.Values на сервер
+            var res = await Http.PostAsJsonAsync("api/input", Session);
+            if (!res.IsSuccessStatusCode)
+            {
+                ErrorMessage = "Ошибка при отправке данных в базу: " + (await res.Content.ReadAsStringAsync());
+                return;
+            }
+            Session.Reset();
+            Nav.NavigateTo("/");
+        }
+    }
 
 }

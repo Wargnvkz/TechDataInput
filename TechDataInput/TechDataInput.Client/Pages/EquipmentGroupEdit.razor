@@ -51,7 +51,7 @@
 @code {
     [Parameter] public List<EquipmentGroup> EquipmentGroups { get; set; }
     [Parameter] public Func<Task> UpdateEquipmentGroups { get; set; }
-
+    [Inject] IJSRuntime JS { get; set; }
 
     #region Equipment group variables
     private int? EditingEquipmentGroupId = null;
@@ -102,6 +102,9 @@
 
     public async Task DeleteEquipmentGroup(EquipmentGroup eqGroup)
     {
+        bool confirmed = await JS.InvokeAsync<bool>("confirm", "Вы действительно хотите удалить запись?");
+        if (!confirmed) return;
+
         ResetEquipmentGroupValidateMessages();
         var response = await Http.DeleteAsync($"api/equipmentgroup/{eqGroup.Id}");
         if (response.IsSuccessStatusCode)

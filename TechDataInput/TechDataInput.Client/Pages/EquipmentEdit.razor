@@ -80,6 +80,7 @@
     [Parameter] public List<Equipment> Equipments { get; set; }
     [Parameter] public Func<Task> UpdateEquipments { get; set; }
     Dictionary<int, EquipmentGroup> dictEquipmentGroups = new();
+    [Inject] IJSRuntime JS { get; set; }
 
 
     #region Equipment variables
@@ -151,6 +152,9 @@
 
     public async Task DeleteEquipment(Equipment eq)
     {
+        bool confirmed = await JS.InvokeAsync<bool>("confirm", "Вы действительно хотите удалить запись?");
+        if (!confirmed) return;
+
         ResetEquipmentValidateMessages();
         var response = await Http.DeleteAsync($"api/equipment/{eq.Id}");
         if (response.IsSuccessStatusCode)

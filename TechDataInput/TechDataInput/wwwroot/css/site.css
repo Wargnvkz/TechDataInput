@@ -22,6 +22,7 @@
 table.list tr td, table.list tr th, table.list thead tr th, table.list tr, table.list {
     border-collapse: collapse;
     border: 1px solid;
+    padding: 5px;
 }
 
 div.block {
@@ -38,4 +39,6 @@ div.block {
 
 .verticaltext {
     writing-mode: vertical-lr;
+    transform:rotate(180deg);
 }
+

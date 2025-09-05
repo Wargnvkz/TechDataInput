@@ -37,7 +37,7 @@ namespace TechDataInput.Controllers
                     .ThenInclude(v => v.ParameterDefinition)
                 .ToListAsync();
 
-            return sessions.Select(ms => new MeasurementSessionDto
+            var measureSessionsDto = sessions.Select(ms => new MeasurementSessionDto
             {
                 Id = ms.Id,
                 Timestamp = ms.Timestamp,
@@ -57,6 +57,7 @@ namespace TechDataInput.Controllers
                                ParameterDefinitionId = v.ParameterDefinitionId
                            }).ToList()
             }).ToList();
+            return measureSessionsDto;
         }
 
 

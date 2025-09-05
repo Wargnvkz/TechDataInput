@@ -201,6 +201,7 @@
     ParameterDefinition newRecord = new();
     ParameterDefinition EditingRecord = null;
     string? ParameterDefinitionValidationMessage = null;
+    [Inject] IJSRuntime JS { get; set; }
 
     #endregion
 
@@ -263,6 +264,8 @@
 
     public async Task DeleteParameter(ParameterDefinition pd)
     {
+        bool confirmed = await JS.InvokeAsync<bool>("confirm", "Вы действительно хотите удалить запись?");
+        if (!confirmed) return;
         ResetParameterValidateMessages();
         var response = await Http.DeleteAsync($"api/parameterdefinitions/{pd.Id}");
         if (response.IsSuccessStatusCode)
